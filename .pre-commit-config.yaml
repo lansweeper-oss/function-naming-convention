@@ -1,0 +1,89 @@
+default_install_hook_types:
+  - commit-msg
+  - pre-commit
+  - pre-push
+
+fail_fast: true
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-executables-have-shebangs
+      - id: check-merge-conflict
+      - id: detect-aws-credentials
+        args:
+          - --allow-missing-credentials
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: fix-byte-order-marker
+      - id: trailing-whitespace
+        args:
+          - --markdown-linebreak-ext=md
+
+  - repo: https://github.com/adrienverge/yamllint.git
+    rev: v1.38.0
+    hooks:
+    - id: yamllint
+
+  - repo: https://github.com/golangci/golangci-lint
+    rev: v2.9.0
+    hooks:
+      - id: golangci-lint
+        files: e2e/\.go$
+
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.3.0
+    hooks:
+      - id: conventional-pre-commit
+        stages:
+          - commit-msg
+        args:
+          - --force-scope
+
+  - repo: local
+    hooks:
+      - id: markdownlint
+        name: Markdownlint
+        description: Run markdown lint using the project docker image
+        language: docker_image
+        files: \.(md|mdown|markdown)$
+        exclude: (\..*\/.*|.*\.marp\.md)$
+        entry: markdownlint/markdownlint:0.15.0
+
+      - id: tpl-filename-kebab-case
+        name: Validate tpl.yaml filenames are kebab-case
+        language: system
+        entry: >-
+          bash -c 'for f in "$@"; do
+            filename=$(basename "$f");
+            [[ "$filename" == _* ]] && continue;
+            if ! [[ "$filename" =~ ^[a-z][a-z0-9]*(-[a-z0-9]+)*\.tpl\.yaml$ ]]; then
+              echo "ERROR: $f is not kebab-case";
+              exit 1;
+            fi;
+          done' --
+        files: \.tpl\.yaml$
+        stages:
+          - pre-commit
+          - pre-push
+
+      - id: composition-schema-readme
+        name: Generate schema and README for changed compositions
+        language: system
+        entry: >-
+          bash -c 'for c in $(printf "%s\n" "$@" | sed -n "s|^compositions/\([^/]*/[^/]*\)/.*|\1|p" | sort -u);
+          do make composition="$c" schema && make composition="$c" readme || exit 1; done' --
+        files: ^compositions/.+/values\.yaml$
+        stages:
+          - pre-push
+
+      - id: composition-validate
+        name: Validate changed compositions
+        language: system
+        entry: >-
+          bash -c 'for c in $(printf "%s\n" "$@" | sed -n "s|^compositions/\([^/]*/[^/]*\)/.*|\1|p" | sort -u);
+          do make composition="$c" validate || exit 1; done' --
+        files: ^compositions/
+        stages:
+          - pre-push

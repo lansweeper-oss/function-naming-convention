@@ -1,0 +1,105 @@
+---
+name: Release
+
+defaults:
+  run:
+    shell: bash
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - closed
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Version to release
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release-function:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get tag
+        id: tag-from-input
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: echo "tag=$(sed 's/^[^v]/v&/' <<< ${{ github.event.inputs.tag }})" >> $GITHUB_OUTPUT
+
+      - name: Get next tag
+        id: tag-from-git
+        if: ${{ github.event_name != 'workflow_dispatch' }}
+        uses: ietf-tools/semver-action@c90370b2958652d71c06a3484129a4d423a6d8a8 # v1
+        with:
+          noVersionBumpBehavior: warn
+          skipInvalidTags: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get inferred tag and version
+        id: tag
+        run: >-
+          baseUrl=${{ github.server_url }}/${{ github.repository }};
+          tag=${{
+            steps.tag-from-input.outputs.tag != '' && steps.tag-from-input.outputs.tag ||
+            steps.tag-from-git.outputs.bump != 'none' && steps.tag-from-git.outputs.next || ''
+          }};
+          version="${tag#${{ matrix.function }}/}";
+          echo "compare=${baseUrl}/compare/${{ steps.tag-from-git.outputs.current }}...${tag}" >> $GITHUB_OUTPUT;
+          echo "tag=${tag}" | tee -a $GITHUB_OUTPUT;
+          echo "today=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT;
+          echo "version=${version}" | tee -a $GITHUB_OUTPUT;
+
+      - name: Create a GitHub release
+        # We don't want to create a release for a workflow_dispatch
+        if: ${{ github.event_name == 'pull_request' && steps.tag.outputs.tag != '' }}
+        uses: ncipollo/release-action@440c8c1cb0ed28b9f43e4d1d670870f059653174 # v1.16.0
+        with:
+          tag: ${{ steps.tag.outputs.tag }}
+          name: ${{ steps.tag.outputs.tag }}
+          body: |-
+            ## [${{ steps.tag.outputs.version }}](${{ steps.tag.outputs.compare }}) (${{ steps.tag.outputs.today }})
+            ### ${{ github.event.pull_request.title }}
+            ${{ github.event.pull_request.body }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0
+
+      - name: Set up Docker Buildx
+        id: builder
+        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
+
+      - name: Restore cached tools
+        id: cache-tools-restore
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .tools
+          key: ${{ runner.os }}-tools-${{ hashFiles('**/Makefile') }}
+
+      - name: Build and publish
+        if: ${{ steps.tag.outputs.version != '' }}
+        run: >-
+          ORG_NAME="${GITHUB_REPOSITORY%%/*}"
+          make function=${{ matrix.function }} \
+            builder=${{ steps.builder.outputs.name }} \
+            registry=ghcr.io/${ORG_NAME} \
+            tag="${{ steps.tag.outputs.version }}" \
+            publish
+
+      - name: Cache tools
+        id: cache-tools-save
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .tools
+          key: ${{ steps.cache-tools-restore.outputs.cache-primary-key }}

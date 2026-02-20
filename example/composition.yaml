@@ -1,0 +1,88 @@
+---
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: function-naming-convention
+spec:
+  compositeTypeRef:
+    apiVersion: example.crossplane.io/v1
+    kind: XR
+  mode: Pipeline
+  pipeline:
+  - step: environment-config
+    functionRef:
+      name: function-environment-configs
+    input:
+      apiVersion: environmentconfigs.fn.crossplane.io/v1beta1
+      kind: Input
+      spec:
+        environmentConfigs:
+        - type: Reference
+          ref:
+            name: environment
+  - step: patch-and-transform
+    functionRef:
+      name: function-patch-and-transform
+    input:
+      apiVersion: pt.fn.crossplane.io/v1beta1
+      kind: Resources
+      resources:
+      - name: vpc
+        base:
+          apiVersion: ec2.aws.upbound.io/v1beta1
+          kind: VPC
+          metadata:
+            annotations:
+              custom-annotation: "keep-me"
+              function-naming-convention/tag-name: "true"
+              function-naming-convention/for-provider-name: "true"
+              function-naming-convention/for-provider-nameoverride: "true"
+              function-naming-convention/tags-field: "awsTags"
+            name: foo
+          spec:
+            forProvider:
+              cidrBlock:  # patched
+              enableDnsHostnames: true
+              enableDnsSupport: true
+              name: deleteme
+              region:  # patched
+              tags:
+                static-tag: baz
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.cidrBlock
+          toFieldPath: spec.forProvider.cidrBlock
+        - type: FromEnvironmentFieldPath
+          fromFieldPath: aws_region
+          toFieldPath: spec.forProvider.region
+  - step: enforce-naming-convention
+    functionRef:
+      name: function-naming-convention
+    input:
+      apiVersion: naming-convention.fn.crossplane.com/v1alpha1
+      kind: Input
+      spec:
+        envToLabel:
+        - accountName
+        - accountCode
+        - accountId
+        - awsRegion
+        - regionCode
+        - tenant
+        labels:
+          prefix: foo
+        nameTemplateFields:
+        - namePrefixWithoutDomain
+        - domain
+        - kindCode
+        valuesFromMap:
+        - from: incorrect
+          to: whatever
+          map:
+            DontCare: shouldBeIgnored
+        - from: kind
+          to: kindCode
+          map:
+            Bucket: bk
+            Foo: bar
+            Policy: plcy

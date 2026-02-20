@@ -1,0 +1,119 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "function-naming-convention"
+description = 'A composition function to enforce Naming convention'
+readme = "README.md"
+requires-python = ">=3.12,<3.15"
+license = "Apache-2.0"
+keywords = []
+authors = [{ name = "Platform Team", email = "PlatformTeam@lansweeper.com" }]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+]
+
+dependencies = [
+  "case-converter==1.2.0",
+  "crossplane-function-sdk-python==0.11.0",
+  "click==8.3.1",
+  "PyYAML==6.0.3",
+]
+
+dynamic = ["version"]
+
+[project.urls]
+Documentation = "https://github.com/lansweeper-oss/function-naming-convention#readme"
+Issues = "https://github.com/lansweeper-oss/function-naming-convention/issues"
+Source = "https://github.com/lansweeper-oss/function-naming-convention"
+
+[project.scripts]
+function = "function.main:cli"
+
+[tool.hatch.build.targets.wheel]
+packages = ["function"]
+
+[tool.hatch.version]
+path = "function/__version__.py"
+validate-bump = false            # Allow going from 0.0.0.dev0+x to 0.0.0.dev0+y.
+
+[tool.hatch.envs.default]
+type = "virtual"
+path = ".venv-default"
+dependencies = ["ipython==9.10.0"]
+
+[tool.hatch.envs.default.scripts]
+development = "python function/main.py --insecure --debug"
+
+[tool.hatch.envs.lint]
+type = "virtual"
+detached = true
+path = ".venv-lint"
+dependencies = ["ruff==0.15.2"]
+
+[tool.hatch.envs.lint.scripts]
+check = "ruff check function tests --fix && ruff format --diff function tests"
+
+[tool.hatch.envs.test]
+type = "virtual"
+path = ".venv-test"
+
+[tool.hatch.envs.test.scripts]
+unit = "python -m unittest tests/*.py"
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+exclude = ["function/proto/*"]
+
+[tool.ruff.lint]
+preview = true
+select = [
+  "A",
+  "ARG",
+  "ASYNC",
+  "B",
+  "C",
+  "D",
+  "DTZ",
+  "E",
+  "EM",
+  "ERA",
+  "F",
+  "FBT",
+  "I",
+  "ICN",
+  "ISC",
+  "N",
+  "PLC",
+  "PLE",
+  "PLR",
+  "PLW",
+  "Q",
+  "RUF",
+  "S",
+  "T",
+  "TID",
+  "UP",
+  "W",
+  "YTT",
+]
+ignore = ["ISC001"] # Ruff warns this is incompatible with ruff format.
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D"] # Don't require docstrings for tests.
+
+[tool.ruff.lint.isort]
+known-first-party = ["function"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.pep8-naming]
+# gRPC requires this PascalCase function name.
+extend-ignore-names = ["RunFunction"]

@@ -1,0 +1,154 @@
+---
+name: Function lint and validate
+
+defaults:
+  run:
+    shell: bash
+
+on:
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  GO_VERSION: '1.26.0'
+  PYTHON_VERSION: '3.14.3'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  lookup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+        with:
+          fetch-depth: 1
+
+      - name: Get changed folders
+        id: lookup
+        uses: tj-actions/changed-files@24d32ffd492484c1d75e0c0b894501ddb9d30d62 # v47
+        with:
+          diff_relative: true
+          dir_names_max_depth: 2
+          dir_names: true
+          dir_names_deleted_files_include_only_deleted_dirs: true
+          matrix: true
+          files_yaml: |
+            docs:
+              - '**/*.md'
+            function:
+              - '!**/package/input/inputs.yaml'
+              - '!*.md'
+            inputs:
+              - '**/package/input/inputs.yaml'
+              - '!*.md'
+            yaml:
+              - '**/*.yaml'
+              - '**/*.yml'
+    outputs:
+      docs: ${{ steps.lookup.outputs.docs_all_changed_files }}
+      function: ${{ steps.lookup.outputs.function_any_changed }}
+      inputs: ${{ steps.lookup.outputs.inputs_any_changed }}
+      yaml: ${{ steps.lookup.outputs.yaml_all_changed_files }}
+
+  validate-function:
+    needs: lookup
+    runs-on: ubuntu-latest
+    if: ${{
+        needs.lookup.outputs.function == 'true' &&
+        github.event_name == 'pull_request' && github.event.pull_request.merged != true
+      }}
+    steps:
+      - name: Setup Python
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Restore cached tools
+        id: cache-tools-restore
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .tools
+          key: ${{ runner.os }}-tools-${{ hashFiles('**/Makefile') }}
+
+      - name: Validate function
+        run: make validate
+
+      - name: Cache tools
+        id: cache-tools-save
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .tools
+          key: ${{ steps.cache-tools-restore.outputs.cache-primary-key }}
+
+  validate-inputs:
+    needs: lookup
+    runs-on: ubuntu-latest
+    if: ${{
+        needs.lookup.outputs.inputs == 'true' &&
+        github.event_name == 'pull_request' && github.event.pull_request.merged != true
+      }}
+    steps:
+      - name: Setup go
+        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Install kubectl-validate
+        run: go install sigs.k8s.io/kubectl-validate@v0.0.4
+
+      - name: Run kubectl-validate
+        run: kubectl-validate package/input/inputs.yaml
+
+  lint-docs:
+    needs: lookup
+    runs-on: ubuntu-latest
+    if: ${{
+        needs.lookup.outputs.docs != '[]' && needs.lookup.outputs.docs != '' &&
+        github.event_name == 'pull_request' && github.event.pull_request.merged != true
+      }}
+    strategy:
+      fail-fast: false
+      matrix:
+        dir: ${{ fromJSON(needs.lookup.outputs.docs) }}
+      max-parallel: 5
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+
+      - name: Lint Markdown
+        uses: actionshub/markdownlint@6c82ff529253530dfbf75c37570876c52692835f # v3.1.4
+        with:
+          path: ${{ matrix.dir }}
+          filesToIgnoreRegex: (\..*\/.*|.*\.md)$
+
+  yaml-lint:
+    runs-on: ubuntu-latest
+    needs: lookup
+    if: ${{
+        needs.lookup.outputs.yaml != '[]' && needs.lookup.outputs.yaml != '' &&
+        github.event_name == 'pull_request' && github.event.pull_request.merged != true
+      }}
+    strategy:
+      fail-fast: false
+      matrix:
+        dir: ${{ fromJSON(needs.lookup.outputs.yaml) }}
+      max-parallel: 5
+    steps:
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6
+
+      - uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - run: pip install yamllint
+
+      - id: yaml-lint
+        name: YAML lint ${{ matrix.dir }}
+        run: yamllint ${{ matrix.dir }}

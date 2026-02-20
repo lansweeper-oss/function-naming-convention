@@ -1,0 +1,10 @@
+---
+apiVersion: example.crossplane.io/v1
+kind: XR
+metadata:
+  name: example-xr
+spec:
+  forProvider:
+    region: us-east-1
+  parameters:
+    cidrBlock: 10.196.10.0/24

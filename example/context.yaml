@@ -1,0 +1,34 @@
+# yamllint disable rule:line-length
+apiVersion: apiextensions.crossplane.io/v1beta1
+kind: EnvironmentConfig
+metadata:
+  labels:
+    app.kubernetes.io/name: config
+  name: config
+data:
+  accountCode: tst
+  accountId: "000987654321"
+  accountName: testing
+  accountType: application
+  awsPartition: aws
+  awsRegion: eu-south-2
+  awsTags:
+    ac/account: testing
+    ac/domain: core
+    ac/environment: testing
+    ac/owner: the-a-team
+    ac/region: eu-south-2
+  continent: eu
+  domain: core
+  environment: testing
+  environmentCode: tst
+  kubernetesLabels:
+    app.kubernetes.io/part-of: core
+    acme/domain: core
+    acme/environment: testing
+    acme/owner: the-a-team
+  namePrefix: ac-tst-eus2-core
+  namePrefixWithoutDomain: ac-tst-eus2
+  regionCode: eus2
+  tenant: acme
+  tenantCode: ac

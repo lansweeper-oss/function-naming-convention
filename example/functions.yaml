@@ -1,0 +1,25 @@
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Function
+metadata:
+  name: function-environment-configs
+spec:
+  package: ghcr.io/crossplane-contrib/function-environment-configs:v0.6.0
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Function
+metadata:
+  name: function-patch-and-transform
+spec:
+  package: ghcr.io/crossplane-contrib/function-patch-and-transform:v0.10.0
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Function
+metadata:
+  annotations:
+    # This tells crossplane render to connect to the function locally.
+    render.crossplane.io/runtime: Development
+  name: function-naming-convention
+spec:
+  # This is ignored when using the Development runtime.
+  package: function-naming-convention

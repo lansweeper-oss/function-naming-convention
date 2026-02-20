@@ -1,0 +1,30 @@
+extends: default
+
+ignore: |
+  *.tpl.yaml
+  *.tpl.yml
+  .pre-commit-config.yaml
+  .yamllint
+  observed.yaml
+  **/apis
+  assertions.yaml
+  assertions.disabled.yaml
+
+rules:
+  braces:
+    forbid: non-empty
+  brackets:
+    forbid: non-empty
+  comments:
+    min-spaces-from-content: 1 # renovatebot doesn't play well with 2 spaces for gh actions
+  line-length:
+    allow-non-breakable-words: true
+    allow-non-breakable-inline-mappings: true
+    max: 120
+  # Usually we glue different files together with the "---" separator
+  document-start: disable
+  indentation:
+    indent-sequences: consistent
+    spaces: 2
+  truthy:
+    check-keys: false

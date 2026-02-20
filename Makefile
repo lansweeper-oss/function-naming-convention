@@ -85,7 +85,7 @@ publish: $(CROSSPLANE) $(DOCKER)
 	@$(call LOG_ECHO, "🌍 Package $(name) successfully pushed as $$image")
 
 	@if [ "$(mirror)" = "true" ]; then \
-		image=xpkg.upbound.io/$(owner)/$(name):$(tag); \
+		image=xpkg.upbound.io/lansweeper/$(name):$(tag); \
 		$(call LOG_ECHO, "🌏 Pushing package $(name) as $$image..."); \
 		$(CROSSPLANE) xpkg push -f $$(echo *.xpkg|tr ' ' ,) $$image || { \
 			$(call LOG_ECHO, "❌ Failed to push $(name) as $$image"); \

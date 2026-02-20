@@ -129,7 +129,7 @@ jobs:
         uses: actionshub/markdownlint@6c82ff529253530dfbf75c37570876c52692835f # v3.1.4
         with:
           path: ${{ matrix.dir }}
-          filesToIgnoreRegex: (\..*\/.*|.*\.md)$
+          filesToIgnoreRegex: (\..*\/.*)$
 
   yaml-lint:
     runs-on: ubuntu-latest

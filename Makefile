@@ -76,17 +76,6 @@ publish: $(CROSSPLANE) $(DOCKER)
 		exit $$?; \
 	}
 
-	@for registry in ghcr.io $(if $(filter $(mirror), true), xpkg.upbound.io)
-	@do
-		@image=$${registry}/$(owner)/$(name):$(tag)
-		@$(call LOG_ECHO, "🌏 Pushing package $(name) as $$image...")
-		@$(CROSSPLANE) xpkg push -f $$package $$image || { \
-			$(call LOG_ECHO, "❌ Failed to push $(name) as $$image"); \
-			exit 1; \
-		}
-		@$(call LOG_ECHO, "🌍 Package $(name) successfully pushed as $$image")
-	@done
-
 	@image=ghcr.io/$(owner)/$(name):$(tag)
 	@$(call LOG_ECHO, "🌏 Pushing package $(name) as $$image...")
 	@$(CROSSPLANE) xpkg push -f $$package $$image || { \
@@ -97,7 +86,7 @@ publish: $(CROSSPLANE) $(DOCKER)
 
 	@image=xpkg.upbound.io/$(owner)/$(name):$(tag)
 	@$(call LOG_ECHO, "🌏 Pushing package $(name) as $$image...")
-	@$(CROSSPLANE) xpkg push -f  $(echo *.xpkg|tr ' ' ,) $$image || { \
+	@$(CROSSPLANE) xpkg push -f $$(echo *.xpkg|tr ' ' ,) $$image || { \
 		$(call LOG_ECHO, "❌ Failed to push $(name) as $$image"); \
 		exit 1; \
 	}

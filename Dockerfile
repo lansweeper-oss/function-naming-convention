@@ -3,7 +3,7 @@
 ARG UV_VERSION=0.10.4
 FROM ghcr.io/astral-sh/uv:${UV_VERSION} AS uv
 
-FROM debian:12-slim AS build
+FROM debian:13-slim AS build
 # Don't write .pyc bytecode files. These speed up imports when the program is
 # loaded. There's no point doing that in a container where they'll never be
 # persisted across restarts.

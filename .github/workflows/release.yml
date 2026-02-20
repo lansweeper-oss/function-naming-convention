@@ -101,7 +101,7 @@ jobs:
         run: >-
           make builder=${{ steps.builder.outputs.name }} \
             owner=${{ github.repository_owner }} \
-            mirror=${{ env.XPKG_ACCESS_ID != '' }}
+            mirror=${{ env.XPKG_ACCESS_ID != '' }} \
             tag="${{ steps.tag.outputs.tag }}" \
             publish
 

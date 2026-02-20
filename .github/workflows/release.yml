@@ -78,7 +78,7 @@ jobs:
           tag: ${{ steps.tag.outputs.tag }}
           name: ${{ steps.tag.outputs.tag }}
           body: |-
-            ## [${{ steps.tag.outputs.version }}](${{ steps.tag.outputs.compare }}) (${{ steps.tag.outputs.today }})
+            ## [${{ steps.tag.outputs.tag }}](${{ steps.tag.outputs.compare }}) (${{ steps.tag.outputs.today }})
             ### ${{ github.event.pull_request.title }}
             ${{ github.event.pull_request.body }}
 
@@ -97,7 +97,7 @@ jobs:
           key: ${{ runner.os }}-tools-${{ hashFiles('**/Makefile') }}
 
       - name: Build and publish
-        if: ${{ steps.tag.outputs.version != '' }}
+        if: ${{ steps.tag.outputs.tag != '' }}
         run: >-
           make builder=${{ steps.builder.outputs.name }} \
             owner=${{ github.repository_owner }} \

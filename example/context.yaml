@@ -2,9 +2,7 @@
 apiVersion: apiextensions.crossplane.io/v1beta1
 kind: EnvironmentConfig
 metadata:
-  labels:
-    app.kubernetes.io/name: config
-  name: config
+  name: environment
 data:
   accountCode: tst
   accountId: "000987654321"

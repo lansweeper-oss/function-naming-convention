@@ -7,10 +7,9 @@ with these example manifests.
 
 ```shell
 # Run the function locally
-$ make function=function-naming-convention run
+$ make run
 
 # or
-$ cd functions/function-naming-convention
 $ hatch run development
 ```
 
@@ -18,9 +17,7 @@ Then, in another terminal, call it with these example manifests:
 
 ```shell
 $ cd example
-$ crossplane render -rx \
-  xr.yaml composition.yaml functions.yaml \
-  --extra-resources context.yaml
+$ crossplane render -rx -e context.yaml xr.yaml composition.yaml functions.yaml
 ---
 apiVersion: example.crossplane.io/v1
 kind: XR

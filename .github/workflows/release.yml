@@ -58,7 +58,7 @@ jobs:
           skipInvalidTags: true
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get inferred tag and version
+      - name: Get inferred tag
         id: tag
         run: >-
           baseUrl=${{ github.server_url }}/${{ github.repository }};
@@ -66,11 +66,9 @@ jobs:
             steps.tag-from-input.outputs.tag != '' && steps.tag-from-input.outputs.tag ||
             steps.tag-from-git.outputs.bump != 'none' && steps.tag-from-git.outputs.next || ''
           }};
-          version="${tag#${{ matrix.function }}/}";
           echo "compare=${baseUrl}/compare/${{ steps.tag-from-git.outputs.current }}...${tag}" >> $GITHUB_OUTPUT;
           echo "tag=${tag}" | tee -a $GITHUB_OUTPUT;
           echo "today=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT;
-          echo "version=${version}" | tee -a $GITHUB_OUTPUT;
 
       - name: Create a GitHub release
         # We don't want to create a release for a workflow_dispatch
@@ -101,8 +99,7 @@ jobs:
       - name: Build and publish
         if: ${{ steps.tag.outputs.version != '' }}
         run: >-
-          make function=${{ matrix.function }} \
-            builder=${{ steps.builder.outputs.name }} \
+          make builder=${{ steps.builder.outputs.name }} \
             owner=${{ github.repository_owner }} \
             mirror=${{ env.XPKG_ACCESS_ID != '' }}
             tag="${{ steps.tag.outputs.version }}" \

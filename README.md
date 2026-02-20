@@ -980,6 +980,6 @@ Ensure all template fields are present in your context or function values.
 
 <!-- Links -->
 [EnvironmentConfigs Documentation]: https://docs.crossplane.io/latest/composition/environment-configs
-[functions]: https://docs.crossplane.io/latest/concepts/composition-functions
+[functions]: https://docs.crossplane.io/latest/composition/compositions/#how-composition-functions-work
 [RFC 1123]: https://www.rfc-editor.org/rfc/rfc1123
 [RFC 1123 DNS Label Names]: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names

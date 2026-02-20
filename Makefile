@@ -70,18 +70,22 @@ publish: $(CROSSPLANE) $(DOCKER)
 		@suffix=$$(echo $$arch | tr '/' '-')
 		@package=$${package:+$${package},}$(name)-$$suffix.xpkg
 	@done
-	@image=$(registry)/$(name):$(tag)
 
 	@$(MAKE) -s build || { \
 		$(call LOG_ECHO, "❌ Build failed"); \
 		exit $$?; \
 	}
-	@$(call LOG_ECHO, "🌏 Pushing package $(name) as $$image...")
-	@$(CROSSPLANE) xpkg push -f $$package $$image || { \
-		$(call LOG_ECHO, "❌ Failed to push $(name) as $$image"); \
-		exit 1; \
-	}
-	@$(call LOG_ECHO, "🌍 Package $(name) successfully pushed as $$image")
+
+	@for registry in ghcr.io $(if $(filter $(mirror), true), xpkg.upbound.io)
+	@do
+		@image=$${registry}/$(owner)/$(name):$(tag)
+		@$(call LOG_ECHO, "🌏 Pushing package $(name) as $$image...")
+		@$(CROSSPLANE) xpkg push -f $$package $$image || { \
+			$(call LOG_ECHO, "❌ Failed to push $(name) as $$image"); \
+			exit 1; \
+		}
+		@$(call LOG_ECHO, "🌍 Package $(name) successfully pushed as $$image")
+	@done
 
 run: $(HATCH)
 	@$(call PRE_CLI)

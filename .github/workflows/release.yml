@@ -5,6 +5,9 @@ defaults:
   run:
     shell: bash
 
+env:
+  XPKG_ACCESS_ID: ${{ secrets.XPKG_ACCESS_ID }}
+
 on:
   pull_request:
     branches:
@@ -33,6 +36,14 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Login to Upbound
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        if: ${{ env.XPKG_ACCESS_ID != '' }}
+        with:
+          registry: xpkg.upbound.io
+          username: ${{ secrets.XPKG_ACCESS_ID }}
+          password: ${{ secrets.XPKG_TOKEN }}
+
       - name: Get tag
         id: tag-from-input
         if: ${{ github.event_name == 'workflow_dispatch' }}
@@ -47,7 +58,7 @@ jobs:
           skipInvalidTags: true
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get inferred tag and version
+      - name: Get inferred tag
         id: tag
         run: >-
           baseUrl=${{ github.server_url }}/${{ github.repository }};
@@ -55,11 +66,9 @@ jobs:
             steps.tag-from-input.outputs.tag != '' && steps.tag-from-input.outputs.tag ||
             steps.tag-from-git.outputs.bump != 'none' && steps.tag-from-git.outputs.next || ''
           }};
-          version="${tag#${{ matrix.function }}/}";
           echo "compare=${baseUrl}/compare/${{ steps.tag-from-git.outputs.current }}...${tag}" >> $GITHUB_OUTPUT;
           echo "tag=${tag}" | tee -a $GITHUB_OUTPUT;
           echo "today=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT;
-          echo "version=${version}" | tee -a $GITHUB_OUTPUT;
 
       - name: Create a GitHub release
         # We don't want to create a release for a workflow_dispatch
@@ -69,7 +78,7 @@ jobs:
           tag: ${{ steps.tag.outputs.tag }}
           name: ${{ steps.tag.outputs.tag }}
           body: |-
-            ## [${{ steps.tag.outputs.version }}](${{ steps.tag.outputs.compare }}) (${{ steps.tag.outputs.today }})
+            ## [${{ steps.tag.outputs.tag }}](${{ steps.tag.outputs.compare }}) (${{ steps.tag.outputs.today }})
             ### ${{ github.event.pull_request.title }}
             ${{ github.event.pull_request.body }}
 
@@ -88,12 +97,12 @@ jobs:
           key: ${{ runner.os }}-tools-${{ hashFiles('**/Makefile') }}
 
       - name: Build and publish
-        if: ${{ steps.tag.outputs.version != '' }}
+        if: ${{ steps.tag.outputs.tag != '' }}
         run: >-
-          make function=${{ matrix.function }} \
-            builder=${{ steps.builder.outputs.name }} \
-            registry=ghcr.io/${{ github.repository_owner }} \
-            tag="${{ steps.tag.outputs.version }}" \
+          make builder=${{ steps.builder.outputs.name }} \
+            owner=${{ github.repository_owner }} \
+            mirror=${{ env.XPKG_ACCESS_ID != '' }} \
+            tag="${{ steps.tag.outputs.tag }}" \
             publish
 
       - name: Cache tools

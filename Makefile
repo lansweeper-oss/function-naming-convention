@@ -70,18 +70,30 @@ publish: $(CROSSPLANE) $(DOCKER)
 		@suffix=$$(echo $$arch | tr '/' '-')
 		@package=$${package:+$${package},}$(name)-$$suffix.xpkg
 	@done
-	@image=$(registry)/$(name):$(tag)
 
 	@$(MAKE) -s build || { \
 		$(call LOG_ECHO, "❌ Build failed"); \
 		exit $$?; \
 	}
+
+	@image=ghcr.io/$(owner)/$(name):$(tag)
 	@$(call LOG_ECHO, "🌏 Pushing package $(name) as $$image...")
 	@$(CROSSPLANE) xpkg push -f $$package $$image || { \
 		$(call LOG_ECHO, "❌ Failed to push $(name) as $$image"); \
 		exit 1; \
 	}
 	@$(call LOG_ECHO, "🌍 Package $(name) successfully pushed as $$image")
+
+	@if [ "$(mirror)" = "true" ]; then \
+		image=xpkg.upbound.io/lansweeper/$(name):$(tag); \
+		$(call LOG_ECHO, "🌏 Pushing package $(name) as $$image..."); \
+		$(CROSSPLANE) xpkg push -f $$(echo *.xpkg|tr ' ' ,) $$image || { \
+			$(call LOG_ECHO, "❌ Failed to push $(name) as $$image"); \
+			exit 1; \
+		}; \
+		$(call LOG_ECHO, "🌍 Package $(name) successfully pushed as $$image"); \
+	fi
+
 
 run: $(HATCH)
 	@$(call PRE_CLI)

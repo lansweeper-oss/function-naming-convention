@@ -87,6 +87,23 @@ publish: $(CROSSPLANE) $(DOCKER)
 		@$(call LOG_ECHO, "🌍 Package $(name) successfully pushed as $$image")
 	@done
 
+	@image=ghcr.io/$(owner)/$(name):$(tag)
+	@$(call LOG_ECHO, "🌏 Pushing package $(name) as $$image...")
+	@$(CROSSPLANE) xpkg push -f $$package $$image || { \
+		$(call LOG_ECHO, "❌ Failed to push $(name) as $$image"); \
+		exit 1; \
+	}
+	@$(call LOG_ECHO, "🌍 Package $(name) successfully pushed as $$image")
+
+	@image=xpkg.upbound.io/$(owner)/$(name):$(tag)
+	@$(call LOG_ECHO, "🌏 Pushing package $(name) as $$image...")
+	@$(CROSSPLANE) xpkg push -f  $(echo *.xpkg|tr ' ' ,) $$image || { \
+		$(call LOG_ECHO, "❌ Failed to push $(name) as $$image"); \
+		exit 1; \
+	}
+	@$(call LOG_ECHO, "🌍 Package $(name) successfully pushed as $$image")
+
+
 run: $(HATCH)
 	@$(call PRE_CLI)
 	@$(HATCH) run development || exit $$?

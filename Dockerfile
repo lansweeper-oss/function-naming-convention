@@ -16,7 +16,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     uv sync --no-dev --no-cache --no-editable --python-preference only-managed
 
-FROM gcr.io/distroless/cc-debian12:nonroot AS image
+FROM gcr.io/distroless/cc-debian13:nonroot AS image
 LABEL org.opencontainers.image.description="A Crossplane composition function to enforce naming conventions"
 WORKDIR /app
 

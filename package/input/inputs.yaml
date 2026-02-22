@@ -68,8 +68,8 @@ spec:
                 required:
                 - prefix
                 properties:
-                  copyToTags:
-                    default: true
+                  labelsAsTags:
+                    default: false
                     description: Copy the labels to spec.forProvider.tags, if provider supports it.
                     type: boolean
                   prefix:
@@ -90,6 +90,18 @@ spec:
                 - '.'
                 default: '-'
                 description: Separator for the items in the naming convention.
+                type: string
+              kebabCaseLabelsAndTags:
+                default: true
+                description: Convert label and tag keys to kebab-case.
+                type: boolean
+              tags:
+                description: Static tags to add to all resources.
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
+              tagsField:
+                default: ''
+                description: Context field containing tags to inject into resources.
                 type: string
               values:
                 description: Arbitrary values for the fields to be used in the naming convention.

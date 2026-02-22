@@ -260,7 +260,7 @@ class Runner(grpcv1.FunctionRunnerService):
         fallback_name_items = self.input.get(c.INPUT_NAME_TEMPLATE, [])
         name_prefix_items = annotations.get(c.ANNOTATION_NAME_TEMPLATE, None)
         if name_prefix_items:
-            name_prefix_items = name_prefix_items.split(c.ANNOTATION_NAME_TEMPLATE_SEPARATOR)
+            name_prefix_items = name_prefix_items.split(name_items_separator)
         else:
             name_prefix_items = fallback_name_items
 
@@ -325,7 +325,7 @@ class Runner(grpcv1.FunctionRunnerService):
                 # are told to do so or if it is empty.
                 if (
                     self._check_if_true(annotations, c.ANNOTATION_FORPROVIDER_NAMEOVERRIDE)
-                    or not for_provider_name_field not in field_reference
+                    or not field_reference[for_provider_name_field]
                 ):
                     field_reference[for_provider_name_field] = new_name
                 else:

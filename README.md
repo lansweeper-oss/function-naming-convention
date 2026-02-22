@@ -110,7 +110,7 @@ Define the naming template and static values:
 
 - Context: `{tenant: "acme", accountCode: "prod", regionCode: "us1", domain: "api"}`.
 - Resource name: `my_bucket`.
-- Generated name: `acme-prod-us1-api-my-bucket` (Kubernetes) and `acme-prod-us1-api-my-bucket` (provider).
+- Generated name: `acme-prod-us1-api-my-bucket` (Kubernetes) and `acme-prod-us1-api-my_bucket` (provider).
 
 > Beware that the Kubernetes name is kebab-cased in order to comply to [RFC 1123][].
 
@@ -178,7 +178,7 @@ metadata:
 
 #### Tag Configuration
 
-Inject tags into resources that support them:
+Inject tags into resources that support them (by default, under `spec.forProvider.tags`):
 
 ```yaml
 spec:
@@ -339,7 +339,7 @@ metadata:
 
 #### External Name Annotation
 
-Copy the mutated name to the external-name annotation:
+Copy the mutated name to the external-name annotation (if not already present):
 
 ```yaml
 metadata:
@@ -494,7 +494,7 @@ metadata:
   name: api
 ```
 
-The `name-template` annotation accepts a comma-separated list of field names.
+The `name-template` annotation accepts a comma-separated (or any other separator, if configured) list of field names.
 
 **Result:**
 
@@ -894,12 +894,12 @@ Tags are applied in this order (later overrides earlier):
 | `kebabCaseLabelsAndTags` | boolean | `true` | Convert labels/tags to kebab-case |
 | `labels` | object | - | Label configuration |
 | `labels.labelsAsTags` | boolean | `false` | Copy labels to tags |
-| `labels.prefix` | string | `""` | Prefix for generated labels |
+| `labels.prefix` | string | **required** | Prefix for generated labels |
 | `labels.separator` | string | `/` | Separator between label prefix and key |
 | `nameTemplateFields` | array[string] | `[]` | Ordered list of fields for name template |
 | `tags` | object | `{}` | Static tags to add to all resources |
 | `tagsField` | string | `""` | Context field containing tags to inject |
-| `templateItemsSeparator` | string | `-` | Separator between name template items |
+| `templateItemsSeparator` | string | `-` | Separator between name template items (only `-` or `.`) |
 | `values` | object | `{}` | Static values to merge with context |
 | `valuesFromMap` | array[object] | `[]` | Field value mappings |
 | `valuesFromMap[].fallback` | string | `dflt` | Default value when no mapping found |

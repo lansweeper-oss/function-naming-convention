@@ -2,5 +2,10 @@
 apiVersion: meta.pkg.crossplane.io/v1beta1
 kind: Function
 metadata:
+  annotations:
+    meta.crossplane.io/maintainer: Lansweeper <PlatformTeam@lansweeper.com>
+    meta.crossplane.io/source: github.com/lansweeper-oss/function-naming-convention
+    meta.crossplane.io/license: Apache-2.0
+    meta.crossplane.io/description: A Function to enforce consistent naming conventions.
   name: function-naming-convention
 spec: {}

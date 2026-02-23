@@ -65,14 +65,13 @@ spec:
               labels:
                 description: Determine how the labels (and optionally tags) will look like.
                 type: object
-                required:
-                - prefix
                 properties:
                   labelsAsTags:
                     default: false
                     description: Copy the labels to spec.forProvider.tags, if provider supports it.
                     type: boolean
                   prefix:
+                    default: ''
                     description: Prefix for the labels (and optionally tags).
                     type: string
                   separator:

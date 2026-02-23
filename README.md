@@ -894,7 +894,7 @@ Tags are applied in this order (later overrides earlier):
 | `kebabCaseLabelsAndTags` | boolean | `true` | Convert labels/tags to kebab-case |
 | `labels` | object | - | Label configuration |
 | `labels.labelsAsTags` | boolean | `false` | Copy labels to tags |
-| `labels.prefix` | string | **required** | Prefix for generated labels |
+| `labels.prefix` | string | `""` | Prefix for generated labels |
 | `labels.separator` | string | `/` | Separator between label prefix and key |
 | `nameTemplateFields` | array[string] | `[]` | Ordered list of fields for name template |
 | `tags` | object | `{}` | Static tags to add to all resources |

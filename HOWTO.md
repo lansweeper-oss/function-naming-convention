@@ -144,7 +144,7 @@
   ```
 
 - Enable/disable copying the labels as tags:
-  - When globally enable, to disable for a given resource:
+  - To globally enable, set `labelsAsTags` under `spec.labels` in the Input:
 
     ```yaml
     [...]
@@ -152,16 +152,25 @@
       apiVersion: naming-convention.fn.crossplane.com/v1alpha1
       kind: Input
       spec:
-        labels-as-tags: true
+        labels:
+          labelsAsTags: true
     [...]
     ```
 
-  - When not globally enabled, to have tags for a given resource do:
+  - When globally enabled, to disable for a specific resource:
 
     ```yaml
     metadata:
       annotations:
-        function-naming-convention/labels-as-tags: false
+        function-naming-convention/labels-as-tags: "false"
+    ```
+
+  - When not globally enabled, to enable for a specific resource:
+
+    ```yaml
+    metadata:
+      annotations:
+        function-naming-convention/labels-as-tags: "true"
     ```
 
 - Set `tag.Name` from mutated `metadata.name`:
@@ -169,7 +178,7 @@
   ```yaml
   metadata:
     annotations:
-      function-naming-convention/tag-name: true
+      function-naming-convention/tag-name: "true"
   ```
 
 - To override the current value for `forProvider.name` with the mutated `metadata.name` do:
@@ -177,7 +186,7 @@
   ```yaml
   metadata:
     annotations:
-      function-naming-convention/for-provider-nameoverride: true
+      function-naming-convention/for-provider-nameoverride: "true"
   ```
 
 - To override how the context/parameters fields form the mutated name, set the per-resource template
@@ -186,12 +195,13 @@
   ```yaml
   metadata:
     annotations:
-      function-naming-convention/name-template: "prefix,domain,component"
-      function-naming-convention/name-fields-separator: ","
+      function-naming-convention/name-template: "prefix-domain-component"
+      function-naming-convention/name-fields-separator: "-"
   ```
 
-  > This will take the context (or EnvironmentConfig) values for `domain` (e.g. `foo`) and `component`
-  (e.g. `bar`) and produce `prefix-foo-bar--baz` for a resource with `metadata.name`: `baz`.
+  > The `name-fields-separator` is used to both split the template into field names and join the
+  resolved values. For example, given context values `domain=foo` and `component=bar`, and a resource
+  with `metadata.name: baz`, this produces `prefix-foo-bar-baz`.
 
 - Replicate labels to an arbitrary field:
 

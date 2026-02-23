@@ -489,12 +489,13 @@ Use a different naming template for a specific resource:
 ```yaml
 metadata:
   annotations:
-    function-naming-convention/name-template: "tenant,environment,component"
+    function-naming-convention/name-template: "tenant.environment.component"
     function-naming-convention/name-fields-separator: "."
   name: api
 ```
 
-The `name-template` annotation accepts a comma-separated (or any other separator, if configured) list of field names.
+The `name-template` annotation accepts a separator-separated list of field names.
+The same `name-fields-separator` character is used to split the template into fields and to join the resolved values.
 
 **Result:**
 

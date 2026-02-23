@@ -566,7 +566,7 @@ class Runner(grpcv1.FunctionRunnerService):
             await self.read_environment(req)
 
             # Populate which Environment variables should be mapped to labels
-            self.ENV_TO_LABEL = self.input.get(c.INPUT_ENV_TO_LABEL, {})
+            self.ENV_TO_LABEL = self.input.get(c.INPUT_ENV_TO_LABEL, [])
             async with asyncio.TaskGroup() as tg:
                 for name in req.desired.resources:
                     tg.create_task(

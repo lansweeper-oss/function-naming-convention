@@ -87,11 +87,11 @@ TESTCASES = [
                                     string_value=f"{c.CONTEXT_KEY_ENVIRONMENT}/region"
                                 ),
                                 c.INPUT_ENV_TO_LABEL: structpb.Value(
-                                    struct_value=structpb.Struct(
-                                        fields={
-                                            "region": structpb.Value(string_value="regionName"),
-                                            "regionCode": structpb.Value(string_value="regionCode"),
-                                        }
+                                    list_value=structpb.ListValue(
+                                        values=[
+                                            structpb.Value(string_value="region"),
+                                            structpb.Value(string_value="regionCode"),
+                                        ]
                                     )
                                 ),
                                 c.INPUT_LABELS: structpb.Value(
@@ -172,21 +172,15 @@ TESTCASES = [
                         struct_value=structpb.Struct(
                             fields={
                                 c.INPUT_ENV_TO_LABEL: structpb.Value(
-                                    struct_value=structpb.Struct(
-                                        fields={
-                                            "account": structpb.Value(string_value="account"),
-                                            "accountCode": structpb.Value(
-                                                string_value="accountCode"
-                                            ),
-                                            "accountId": structpb.Value(string_value="accountId"),
-                                            "namePrefix": structpb.Value(string_value="namePrefix"),
-                                            "region.region": structpb.Value(
-                                                string_value="regionName"
-                                            ),
-                                            "region.regionCode": structpb.Value(
-                                                string_value="regionCode"
-                                            ),
-                                        }
+                                    list_value=structpb.ListValue(
+                                        values=[
+                                            structpb.Value(string_value="account"),
+                                            structpb.Value(string_value="accountCode"),
+                                            structpb.Value(string_value="accountId"),
+                                            structpb.Value(string_value="namePrefix"),
+                                            structpb.Value(string_value="region.region"),
+                                            structpb.Value(string_value="region.regionCode"),
+                                        ]
                                     )
                                 ),
                                 c.INPUT_LABELS: structpb.Value(
@@ -277,15 +271,11 @@ TESTCASES = [
                         struct_value=structpb.Struct(
                             fields={
                                 c.INPUT_ENV_TO_LABEL: structpb.Value(
-                                    struct_value=structpb.Struct(
-                                        fields={
-                                            "region.region": structpb.Value(
-                                                string_value="regionName"
-                                            ),
-                                            "region.regionCode": structpb.Value(
-                                                string_value="regionCode"
-                                            ),
-                                        }
+                                    list_value=structpb.ListValue(
+                                        values=[
+                                            structpb.Value(string_value="region.region"),
+                                            structpb.Value(string_value="region.regionCode"),
+                                        ]
                                     )
                                 ),
                                 c.INPUT_LABELS: structpb.Value(
@@ -381,15 +371,11 @@ TESTCASES = [
                         struct_value=structpb.Struct(
                             fields={
                                 c.INPUT_ENV_TO_LABEL: structpb.Value(
-                                    struct_value=structpb.Struct(
-                                        fields={
-                                            "region.region": structpb.Value(
-                                                string_value="regionName"
-                                            ),
-                                            "region.regionCode": structpb.Value(
-                                                string_value="regionCode"
-                                            ),
-                                        }
+                                    list_value=structpb.ListValue(
+                                        values=[
+                                            structpb.Value(string_value="region.region"),
+                                            structpb.Value(string_value="region.regionCode"),
+                                        ]
                                     )
                                 ),
                                 c.INPUT_LABELS: structpb.Value(
@@ -465,18 +451,12 @@ TESTCASES = [
                         struct_value=structpb.Struct(
                             fields={
                                 c.INPUT_ENV_TO_LABEL: structpb.Value(
-                                    struct_value=structpb.Struct(
-                                        fields={
-                                            "accountCode": structpb.Value(
-                                                string_value="account-code"
-                                            ),
-                                            "namePrefix": structpb.Value(
-                                                string_value="name-prefix"
-                                            ),
-                                            "region.regionCode": structpb.Value(
-                                                string_value="region-code"
-                                            ),
-                                        }
+                                    list_value=structpb.ListValue(
+                                        values=[
+                                            structpb.Value(string_value="accountCode"),
+                                            structpb.Value(string_value="namePrefix"),
+                                            structpb.Value(string_value="region.regionCode"),
+                                        ]
                                     )
                                 ),
                                 c.INPUT_NAME_TEMPLATE: structpb.Value(
@@ -1489,16 +1469,12 @@ TESTCASES = [
                                     )
                                 ),
                                 c.INPUT_ENV_TO_LABEL: structpb.Value(
-                                    struct_value=structpb.Struct(
-                                        fields={
-                                            "accountCode": structpb.Value(
-                                                string_value="accountCode"
-                                            ),
-                                            "namePrefix": structpb.Value(string_value="namePrefix"),
-                                            "region.regionCode": structpb.Value(
-                                                string_value="regionCode"
-                                            ),
-                                        }
+                                    list_value=structpb.ListValue(
+                                        values=[
+                                            structpb.Value(string_value="accountCode"),
+                                            structpb.Value(string_value="namePrefix"),
+                                            structpb.Value(string_value="region.regionCode"),
+                                        ]
                                     )
                                 ),
                                 c.INPUT_NAME_TEMPLATE: structpb.Value(

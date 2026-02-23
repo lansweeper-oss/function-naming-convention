@@ -181,13 +181,13 @@
   ```
 
 - To override how the context/parameters fields form the mutated name, set the per-resource template
-  with (f-string format):
+  with:
 
   ```yaml
   metadata:
     annotations:
-      function-naming-convention/name-template: "prefix-{domain}-{component}"
-      function-naming-convention/name-fields-separator: "--"
+      function-naming-convention/name-template: "prefix,domain,component"
+      function-naming-convention/name-fields-separator: ","
   ```
 
   > This will take the context (or EnvironmentConfig) values for `domain` (e.g. `foo`) and `component`

@@ -425,7 +425,8 @@ metadata:
 ```
 
 Without `nameoverride`, the function will apply the naming convention to the existing value.
-With `nameoverride`, it replaces it entirely.
+With `nameoverride`, it replaces it entirely. An empty `forProvider.name` is also automatically
+overwritten with the mutated name (same behavior as `nameoverride`).
 
 #### Name Tag
 
@@ -920,7 +921,7 @@ Tags are applied in this order (later overrides earlier):
 | `labels-as-tags` | boolean | Copy labels to `spec.forProvider.tags` |
 | `labels-to-field` | string | Copy labels to custom field (dot notation) |
 | `name-fields-separator` | string | Override name template separator |
-| `name-template` | string | Override name template (comma-separated fields) |
+| `name-template` | string | Override name template (separator-separated fields) |
 | `skip-name-modify` | boolean | Skip name modification for this resource |
 | `tag-name` | boolean | Set `Name` tag to mutated name |
 | `tags-field` | string | Context field to load tags from |

@@ -98,7 +98,7 @@
             EBSVolume: ebs
             InternetGateway: igw
             NATGateway: nat
-            OpenIdConnectProvider: oidc
+            OpenIDConnectProvider: oidc
             Policy: plcy
             Record: rec
             RouteTable: rtb
@@ -118,7 +118,7 @@
       function-naming-convention/skip-name-modify: "true"
   ```
 
-- Copy mutated `metadata.name` to `crossplane.io/external-name` annotation:
+- Copy mutated `metadata.name` to `crossplane.io/external-name` annotation (if not already present):
 
   ```yaml
   metadata:
@@ -140,6 +140,7 @@
   ```yaml
   metadata:
     annotations:
+      function-naming-convention/for-provider-name: "true"
       function-naming-convention/for-provider-name-field: clusterName
   ```
 

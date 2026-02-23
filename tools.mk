@@ -91,6 +91,20 @@ DOCKER = $(PODMAN)
 endif
 
 # ====================================================================================
+# up CLI
+
+UP_VERSION ?= v0.44.3
+UP_BINARY_NAME = up-$(HOST_ARCH)-unknown-$(HOST_OS)-gnu
+UP = $(TOOLS_BIN_DIR)/up
+
+$(UP):
+	@$(MAKE) -s tools.prepare
+	$(call LOG_INFO, "🌏 Installing Up CLI $(UP_VERSION)")
+	@curl -sL "https://cli.upbound.io" | VERSION=$(UP_VERSION) sh
+	@mv up $(UP)
+	$(call LOG_INFO, "🌍 Up CLI $(UP_VERSION) installed to $(UP)")
+
+# ====================================================================================
 # clean
 
 tools.clean:

@@ -110,7 +110,7 @@ Define the naming template and static values:
 
 - Context: `{tenant: "acme", accountCode: "prod", regionCode: "us1", domain: "api"}`.
 - Resource name: `my_bucket`.
-- Generated name: `acme-prod-us1-api-my-bucket` (Kubernetes) and `acme-prod-us1-api-my-bucket` (provider).
+- Generated name: `acme-prod-us1-api-my-bucket` (Kubernetes) and `acme-prod-us1-api-my_bucket` (provider).
 
 > Beware that the Kubernetes name is kebab-cased in order to comply to [RFC 1123][].
 
@@ -178,7 +178,7 @@ metadata:
 
 #### Tag Configuration
 
-Inject tags into resources that support them:
+Inject tags into resources that support them (by default, under `spec.forProvider.tags`):
 
 ```yaml
 spec:
@@ -339,7 +339,7 @@ metadata:
 
 #### External Name Annotation
 
-Copy the mutated name to the external-name annotation:
+Copy the mutated name to the external-name annotation (if not already present):
 
 ```yaml
 metadata:
@@ -425,7 +425,8 @@ metadata:
 ```
 
 Without `nameoverride`, the function will apply the naming convention to the existing value.
-With `nameoverride`, it replaces it entirely.
+With `nameoverride`, it replaces it entirely. An empty `forProvider.name` is also automatically
+overwritten with the mutated name (same behavior as `nameoverride`).
 
 #### Name Tag
 
@@ -489,12 +490,13 @@ Use a different naming template for a specific resource:
 ```yaml
 metadata:
   annotations:
-    function-naming-convention/name-template: "tenant,environment,component"
+    function-naming-convention/name-template: "tenant.environment.component"
     function-naming-convention/name-fields-separator: "."
   name: api
 ```
 
-The `name-template` annotation accepts a comma-separated list of field names.
+The `name-template` annotation accepts a separator-separated list of field names.
+The same `name-fields-separator` character is used to split the template into fields and to join the resolved values.
 
 **Result:**
 
@@ -899,7 +901,7 @@ Tags are applied in this order (later overrides earlier):
 | `nameTemplateFields` | array[string] | `[]` | Ordered list of fields for name template |
 | `tags` | object | `{}` | Static tags to add to all resources |
 | `tagsField` | string | `""` | Context field containing tags to inject |
-| `templateItemsSeparator` | string | `-` | Separator between name template items |
+| `templateItemsSeparator` | string | `-` | Separator between name template items (only `-` or `.`) |
 | `values` | object | `{}` | Static values to merge with context |
 | `valuesFromMap` | array[object] | `[]` | Field value mappings |
 | `valuesFromMap[].fallback` | string | `dflt` | Default value when no mapping found |
@@ -919,7 +921,7 @@ Tags are applied in this order (later overrides earlier):
 | `labels-as-tags` | boolean | Copy labels to `spec.forProvider.tags` |
 | `labels-to-field` | string | Copy labels to custom field (dot notation) |
 | `name-fields-separator` | string | Override name template separator |
-| `name-template` | string | Override name template (comma-separated fields) |
+| `name-template` | string | Override name template (separator-separated fields) |
 | `skip-name-modify` | boolean | Skip name modification for this resource |
 | `tag-name` | boolean | Set `Name` tag to mutated name |
 | `tags-field` | string | Context field to load tags from |

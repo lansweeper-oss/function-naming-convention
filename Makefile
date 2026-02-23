@@ -52,11 +52,11 @@ build: $(CROSSPLANE) $(DOCKER) $(HATCH)
 	@do
 		@suffix=$$(echo $$arch | tr '/' '-')
 		@$(DOCKER) buildx build $(build_args) --no-cache --platform $$arch . --output=type=docker,dest=$$temp_dir/runtime-$$suffix.tar
-		@$(CROSSPLANE) xpkg build -f package --embed-runtime-image-tarball=$$temp_dir/runtime-$$suffix.tar -o $(name)-$$suffix.xpkg || { \
+		@$(CROSSPLANE) xpkg build -f package --embed-runtime-image-tarball=$$temp_dir/runtime-$$suffix.tar -o dist/$(name)-$$suffix.xpkg || { \
 			$(call LOG_ECHO, "❌ Failed to build $(name)-$$suffix.xpkg"); \
 			exit 1; \
 		}
-		@$(call LOG_ECHO, "✅ Function successfully built as $(name)-$$suffix.xpkg")
+		@$(call LOG_ECHO, "✅ Function successfully built as dist/$(name)-$$suffix.xpkg")
 	@done
 	@$(call POST_CLI)
 
@@ -64,24 +64,38 @@ lint: $(HATCH)
 	$(HATCH) clean && $(HATCH) run lint:check || exit $$?
 	@yamllint .
 
-publish: $(CROSSPLANE) $(DOCKER)
+publish: $(CROSSPLANE) $(DOCKER) $(UP)
 	@for arch in $(arch)
 	@do
 		@suffix=$$(echo $$arch | tr '/' '-')
-		@package=$${package:+$${package},}$(name)-$$suffix.xpkg
 	@done
-	@image=$(registry)/$(name):$(tag)
 
 	@$(MAKE) -s build || { \
 		$(call LOG_ECHO, "❌ Build failed"); \
 		exit $$?; \
 	}
+
+	@image=ghcr.io/$(owner)/$(name):$(tag)
 	@$(call LOG_ECHO, "🌏 Pushing package $(name) as $$image...")
-	@$(CROSSPLANE) xpkg push -f $$package $$image || { \
+	@$(CROSSPLANE) xpkg push -f $$(echo dist/*.xpkg | tr ' ' ,) $$image || { \
 		$(call LOG_ECHO, "❌ Failed to push $(name) as $$image"); \
 		exit 1; \
 	}
 	@$(call LOG_ECHO, "🌍 Package $(name) successfully pushed as $$image")
+
+	@if [ "$(mirror)" = "true" ]; then \
+		image=xpkg.upbound.io/lansweeper/$(name):$(tag); \
+		$(call LOG_ECHO, "🌏 Pushing package $(name) as $$image..."); \
+		$(CROSSPLANE) xpkg push -f $$(echo dist/*.xpkg | tr ' ' ,) $$image || { \
+			$(call LOG_ECHO, "❌ Failed to push $(name) as $$image"); \
+			exit 1; \
+		}; \
+		mkdir -p dist/ext/docs; \
+		cp *.md dist/ext/docs; \
+		$(UP) alpha xpkg append --extensions-root=./dist/ext xpkg.upbound.io/lansweeper/$(name):$(tag); \
+		$(call LOG_ECHO, "🌍 Package $(name) successfully pushed as $$image"); \
+	fi
+
 
 run: $(HATCH)
 	@$(call PRE_CLI)

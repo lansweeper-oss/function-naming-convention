@@ -1,5 +1,7 @@
 """The composition function's main CLI."""
 
+import asyncio
+
 import click
 from crossplane.function import logging, runtime
 
@@ -45,6 +47,9 @@ def cli(debug: bool, address: str, tls_certs_dir: str, insecure: bool, grpc_opti
         if debug:
             level = logging.Level.DEBUG
         logging.configure(level=level)
+        # Ensure a loop exists before calling runtime.serve() (>=3.14) and is set as the current loop.
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         runtime.serve(
             fn.Runner(),
             address,

@@ -38,7 +38,7 @@ from function import fn
     envvar="GRPC_OPTIONS",
 )
 # We only expect callers via the CLI.
-def cli(debug: bool, address: str, tls_certs_dir: str, insecure: bool) -> None:  # noqa:FBT001
+def cli(debug: bool, address: str, tls_certs_dir: str, insecure: bool, grpc_options: str) -> None:  # noqa:FBT001
     """A Crossplane composition function."""
     try:
         level = logging.Level.INFO
@@ -50,7 +50,7 @@ def cli(debug: bool, address: str, tls_certs_dir: str, insecure: bool) -> None: 
             address,
             creds=runtime.load_credentials(tls_certs_dir),
             insecure=insecure,
-            options=runtime.parse_grpc_options(),
+            options=grpc_options,
         )
     except Exception as e:
         click.echo(f"Cannot run function: {e}")

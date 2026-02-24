@@ -31,10 +31,14 @@ from function import fn
 )
 @click.option(
     "--grpc-options",
-    help="Additional gRPC server options, specified as a JSON object. For example: '{\"grpc.max_send_message_length\": 4194304}'",
+    help=(
+        "Additional gRPC server options, specified as a JSON object. "
+        "For example: '{\"grpc.max_send_message_length\": 4194304}'"
+    ),
     envvar="GRPC_OPTIONS",
 )
-def cli(debug: bool, address: str, tls_certs_dir: str, insecure: bool) -> None:  # noqa:FBT001  # We only expect callers via the CLI.
+# We only expect callers via the CLI.
+def cli(debug: bool, address: str, tls_certs_dir: str, insecure: bool) -> None:  # noqa:FBT001
     """A Crossplane composition function."""
     try:
         level = logging.Level.INFO

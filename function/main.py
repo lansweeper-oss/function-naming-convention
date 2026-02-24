@@ -29,6 +29,11 @@ from function import fn
     is_flag=True,
     help="Run without mTLS credentials. If you supply this flag --tls-certs-dir will be ignored.",
 )
+@click.option(
+    "--grpc-options",
+    help="Additional gRPC server options, specified as a JSON object. For example: '{\"grpc.max_send_message_length\": 4194304}'",
+    envvar="GRPC_OPTIONS",
+)
 def cli(debug: bool, address: str, tls_certs_dir: str, insecure: bool) -> None:  # noqa:FBT001  # We only expect callers via the CLI.
     """A Crossplane composition function."""
     try:
@@ -41,6 +46,7 @@ def cli(debug: bool, address: str, tls_certs_dir: str, insecure: bool) -> None: 
             address,
             creds=runtime.load_credentials(tls_certs_dir),
             insecure=insecure,
+            options=runtime.parse_grpc_options(),
         )
     except Exception as e:
         click.echo(f"Cannot run function: {e}")

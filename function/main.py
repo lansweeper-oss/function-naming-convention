@@ -40,11 +40,11 @@ from function import fn
 )
 # We only expect callers via the CLI.
 def cli(
-    debug: bool,
+    debug: bool,  # noqa: FBT001
     address: str,
     tls_certs_dir: str,
-    insecure: bool,
-    grpc_message_size: int | None,  # noqa: FBT001
+    insecure: bool,  # noqa: FBT001
+    grpc_message_size: int | None,
 ) -> None:
     """A Crossplane composition function."""
     try:

@@ -73,7 +73,7 @@ jobs:
       - name: Create a GitHub release
         # We don't want to create a release for a workflow_dispatch
         if: ${{ github.event_name == 'pull_request' && steps.tag.outputs.tag != '' }}
-        uses: ncipollo/release-action@440c8c1cb0ed28b9f43e4d1d670870f059653174 # v1.16.0
+        uses: ncipollo/release-action@b7eabc95ff50cbeeedec83973935c8f306dfcd0b # v1.20.0
         with:
           tag: ${{ steps.tag.outputs.tag }}
           name: ${{ steps.tag.outputs.tag }}

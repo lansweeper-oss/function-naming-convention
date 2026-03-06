@@ -32,21 +32,32 @@ from function import fn
     help="Run without mTLS credentials. If you supply this flag --tls-certs-dir will be ignored.",
 )
 @click.option(
-    "--grpc-options",
-    help=(
-        "Additional gRPC server options, specified as a JSON object. "
-        "For example: '{\"grpc.max_send_message_length\": 4194304}'"
-    ),
-    envvar="GRPC_OPTIONS",
+    "--grpc-message-size",
+    type=int,
+    default=None,
+    help="Maximum gRPC message size in MiB for both send and receive (defaults to 4 MiB).",
+    envvar="GRPC_MESSAGE_SIZE",
 )
 # We only expect callers via the CLI.
-def cli(debug: bool, address: str, tls_certs_dir: str, insecure: bool, grpc_options: str) -> None:  # noqa:FBT001
+def cli(
+    debug: bool,
+    address: str,
+    tls_certs_dir: str,
+    insecure: bool,
+    grpc_message_size: int | None,  # noqa: FBT001
+) -> None:
     """A Crossplane composition function."""
     try:
         level = logging.Level.INFO
         if debug:
             level = logging.Level.DEBUG
         logging.configure(level=level)
+        options = None
+        if grpc_message_size is not None:
+            options = [
+                ("grpc.max_send_message_length", grpc_message_size * 1024 * 1024),
+                ("grpc.max_receive_message_length", grpc_message_size * 1024 * 1024),
+            ]
         # Ensure a loop exists before calling runtime.serve() (>=3.14).
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -55,7 +66,7 @@ def cli(debug: bool, address: str, tls_certs_dir: str, insecure: bool, grpc_opti
             address,
             creds=runtime.load_credentials(tls_certs_dir),
             insecure=insecure,
-            options=grpc_options,
+            options=options,
         )
     except Exception as e:
         click.echo(f"Cannot run function: {e}")

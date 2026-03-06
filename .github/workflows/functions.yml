@@ -32,7 +32,7 @@ jobs:
 
       - name: Get changed folders
         id: lookup
-        uses: tj-actions/changed-files@7dee1b0c1557f278e5c7dc244927139d78c0e22a # v47.0.4
+        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323 # v47.0.5
         with:
           files_yaml: |
             docs:
@@ -69,7 +69,7 @@ jobs:
 
       - name: Restore cached tools
         id: cache-tools-restore
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache/restore@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: .tools
           key: ${{ runner.os }}-tools-${{ hashFiles('**/Makefile') }}
@@ -79,7 +79,7 @@ jobs:
 
       - name: Cache tools
         id: cache-tools-save
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache/save@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: .tools
           key: ${{ steps.cache-tools-restore.outputs.cache-primary-key }}
@@ -95,7 +95,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Setup go
-        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6
         with:
           go-version: ${{ env.GO_VERSION }}
 

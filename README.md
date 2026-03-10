@@ -79,8 +79,8 @@ This function accepts the following arguments:
 - `--address`: The address at which to listen for requests.
 - `--tls-certs-dir`: The credentials used to authenticate requests.
 - `--insecure`: Run without mTLS credentials. If you supply this flag --tls-certs-dir will be ignored.
-- `--grpc-options`: Additional gRPC server options. Eg. set max receive message size to 5Mb (default is 4Mb):
-    `[("grpc.max_receive_message_length", 1024 * 1024 * 5)]`
+- `--grpc-message-size`: Maximum gRPC message size in MiB for both send and receive
+  (e.g. `4` for 4 MiB, which is gRPC's default).
 - `--debug | -d`: Emit debug logs.
 
 ## Configuration

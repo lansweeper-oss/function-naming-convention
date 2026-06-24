@@ -1475,11 +1475,15 @@ TESTCASES = [
                                                 struct_value=structpb.Struct(
                                                     fields={
                                                         "from": structpb.Value(string_value="kind"),
-                                                        "to": structpb.Value(string_value="kindCode"),
+                                                        "to": structpb.Value(
+                                                            string_value="kindCode"
+                                                        ),
                                                         "map": structpb.Value(
                                                             struct_value=structpb.Struct(
                                                                 fields={
-                                                                    "XTest": structpb.Value(string_value="xt")
+                                                                    "XTest": structpb.Value(
+                                                                        string_value="xt"
+                                                                    )
                                                                 }
                                                             )
                                                         ),

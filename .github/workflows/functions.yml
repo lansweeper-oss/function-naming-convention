@@ -15,8 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  GO_VERSION: '1.26.0'
-  PYTHON_VERSION: '3.14.3'
+  PYTHON_VERSION: "3.14.3"
 
 permissions:
   contents: read
@@ -56,8 +55,8 @@ jobs:
     needs: lookup
     runs-on: ubuntu-latest
     if: ${{
-        needs.lookup.outputs.function == 'true' &&
-        github.event_name == 'pull_request' && github.event.pull_request.merged != true
+      needs.lookup.outputs.function == 'true' &&
+      github.event_name == 'pull_request' && github.event.pull_request.merged != true
       }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
@@ -72,7 +71,7 @@ jobs:
         uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: .tools
-          key: ${{ runner.os }}-tools-${{ hashFiles('**/Makefile') }}
+          key: ${{ runner.os }}-tools-${{ hashFiles('**/versions.mk') }}
 
       - name: Validate function
         run: make validate
@@ -88,29 +87,34 @@ jobs:
     needs: lookup
     runs-on: ubuntu-latest
     if: ${{
-        needs.lookup.outputs.inputs == 'true' &&
-        github.event_name == 'pull_request' && github.event.pull_request.merged != true
+      needs.lookup.outputs.inputs == 'true' &&
+      github.event_name == 'pull_request' && github.event.pull_request.merged != true
       }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
-      - name: Setup go
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
+      - name: Restore cached tools
+        id: cache-tools-restore
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
-          go-version: ${{ env.GO_VERSION }}
+          path: .tools
+          key: ${{ runner.os }}-tools-${{ hashFiles('**/versions.mk') }}
 
-      - name: Install kubectl-validate
-        run: go install sigs.k8s.io/kubectl-validate@v0.0.4
+      - name: Validate inputs
+        run: make validate-inputs
 
-      - name: Run kubectl-validate
-        run: kubectl-validate package/input/inputs.yaml
+      - name: Cache tools
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: .tools
+          key: ${{ steps.cache-tools-restore.outputs.cache-primary-key }}
 
   lint-docs:
     needs: lookup
     runs-on: ubuntu-latest
     if: ${{
-        needs.lookup.outputs.docs == 'true' &&
-        github.event_name == 'pull_request' && github.event.pull_request.merged != true
+      needs.lookup.outputs.docs == 'true' &&
+      github.event_name == 'pull_request' && github.event.pull_request.merged != true
       }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
@@ -124,8 +128,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: lookup
     if: ${{
-        needs.lookup.outputs.yaml == 'true' &&
-        github.event_name == 'pull_request' && github.event.pull_request.merged != true
+      needs.lookup.outputs.yaml == 'true' &&
+      github.event_name == 'pull_request' && github.event.pull_request.merged != true
       }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6

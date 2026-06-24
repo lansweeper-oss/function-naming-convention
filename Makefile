@@ -1,6 +1,6 @@
 # This file requires GNU Make
 SHELL := /bin/bash
-.PHONY: all build build-all clean deploy deploy-all docs dump e2e fne2e lint new print publish readme render render-all render-dependencies run schema schemas test validate template
+.PHONY: build lint publish run test validate validate-inputs
 .ONESHELL:
 
 -include tools.mk
@@ -107,3 +107,6 @@ test: $(HATCH)
 validate: $(HATCH)
 	@$(MAKE) -s lint || exit $$?
 	@$(MAKE) -s test || exit $$?
+
+validate-inputs: $(KUBECTL_VALIDATE)
+	@$(KUBECTL_VALIDATE) package/input/inputs.yaml

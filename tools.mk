@@ -1,3 +1,5 @@
+include versions.mk
+
 HOST_ARCH := $(shell uname -m)
 HOST_RAW_OS := $(shell uname -s)
 HOST_OS := $(shell echo $(HOST_RAW_OS) | tr '[:upper:]' '[:lower:]')
@@ -52,7 +54,6 @@ tools.prepare:
 # ====================================================================================
 # Crossplane CLI
 
-CROSSPLANE_CLI_VERSION ?= v2.3.3
 CROSSPLANE_CLI_DOWNLOAD_URL ?= https://cli.crossplane.io/stable/$(CROSSPLANE_CLI_VERSION)/bin/$(HOST_OS)_$(TARGET_ARCH)/crossplane
 
 CROSSPLANE_CLI ?= $(TOOLS_BIN_DIR)/crossplane-cli
@@ -67,7 +68,6 @@ CROSSPLANE ?= $(CROSSPLANE_CLI)
 # ====================================================================================
 # hatch
 
-HATCH_VERSION ?= v1.17.0
 HATCH_BINARY_NAME = hatch-$(HOST_ARCH)-unknown-$(HOST_OS)-gnu
 HATCH = $(TOOLS_BIN_DIR)/hatch
 
@@ -99,7 +99,6 @@ endif
 # ====================================================================================
 # up CLI
 
-UP_VERSION ?= v0.44.3
 UP = $(TOOLS_BIN_DIR)/up
 
 $(UP):
@@ -108,6 +107,17 @@ $(UP):
 	@curl -sL "https://cli.upbound.io" | VERSION=$(UP_VERSION) sh
 	@mv up $(UP)
 	$(call LOG_ECHO, "🌍 Up CLI $(UP_VERSION) installed to $(UP)")
+
+# ====================================================================================
+# kubectl-validate
+
+KUBECTL_VALIDATE_DOWNLOAD_URL ?= https://github.com/kubernetes-sigs/kubectl-validate/releases/download/v$(KUBECTL_VALIDATE_VERSION)/kubectl-validate_$(HOST_OS)_$(TARGET_ARCH).tar.gz
+
+KUBECTL_VALIDATE ?= $(TOOLS_BIN_DIR)/kubectl-validate
+
+$(KUBECTL_VALIDATE):
+	@$(call INSTALL_TOOL,kubectl-validate,$(KUBECTL_VALIDATE_VERSION),$(KUBECTL_VALIDATE_DOWNLOAD_URL),\
+		@tar xzf $(TOOLS_TMP_DIR)/kubectl-validate.download -C $(TOOLS_BIN_DIR) kubectl-validate)
 
 # ====================================================================================
 # clean

@@ -47,18 +47,17 @@ def cli(
     grpc_message_size: int | None,
 ) -> None:
     """A Crossplane composition function."""
+    level = logging.Level.INFO
+    if debug:
+        level = logging.Level.DEBUG
+    logging.configure(level=level)
+    options = None
+    if grpc_message_size is not None:
+        options = [
+            ("grpc.max_send_message_length", grpc_message_size * 1024 * 1024),
+            ("grpc.max_receive_message_length", grpc_message_size * 1024 * 1024),
+        ]
     try:
-        level = logging.Level.INFO
-        if debug:
-            level = logging.Level.DEBUG
-        logging.configure(level=level)
-        options = None
-        if grpc_message_size is not None:
-            options = [
-                ("grpc.max_send_message_length", grpc_message_size * 1024 * 1024),
-                ("grpc.max_receive_message_length", grpc_message_size * 1024 * 1024),
-            ]
-        # Ensure a loop exists before calling runtime.serve() (>=3.14).
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         runtime.serve(

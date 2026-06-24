@@ -36,7 +36,7 @@ def _dot_notation_to_struct_field(
 def _dot_notation_to_struct_field_create_if_not_existing(
     struct: structpb.Struct,
     path: str,
-    constructor: any,
+    constructor: dict | str,
 ) -> structpb.Struct:
     """Get a reference to a field from a Struct using dot notation.
 
@@ -276,7 +276,7 @@ class Runner(grpcv1.FunctionRunnerService):
         name_prefix = self._format_name_prefix(
             res.environment, name_prefix_items, name_items_separator
         )
-        return (name_prefix + name_items_separator + name)[: c.MAX_NAME_LENGTH]
+        return name_prefix + name_items_separator + name
 
     def get_labels(self, res: Resource) -> tuple[dict, set[str]]:
         """Get the labels for the resource as per the naming convention.
@@ -321,34 +321,32 @@ class Runner(grpcv1.FunctionRunnerService):
 
     async def mutate_forprovider_name(self, res: Resource, new_name: str) -> None:
         """Conditionally mutate the spec.forProvider.name for the resource."""
+        annotations = res.metadata.get("annotations", {})
+        for_provider_name_field = annotations.get(c.ANNOTATION_FORPROVIDER_NAME_FIELD, "name")
+        if not (
+            self._check_if_true(annotations, c.ANNOTATION_INCLUDE_FORPROVIDER_NAME)
+            and "spec" in res.resource
+            and "forProvider" in res.resource["spec"]
+        ):
+            return
+        self.log.debug(f"Mutating forProvider.{for_provider_name_field} for {res.ref}")
+        leaf_field = for_provider_name_field.split(".")[-1]
         try:
-            annotations = res.metadata.get("annotations", {})
-            for_provider_name_field = annotations.get(c.ANNOTATION_FORPROVIDER_NAME_FIELD, "name")
+            field_reference = _dot_notation_to_struct_field_create_if_not_existing(
+                res.resource["spec"]["forProvider"],
+                for_provider_name_field,
+                constructor="",
+            )
             if (
-                self._check_if_true(annotations, c.ANNOTATION_INCLUDE_FORPROVIDER_NAME)
-                and "spec" in res.resource
-                and "forProvider" in res.resource["spec"]
+                self._check_if_true(annotations, c.ANNOTATION_FORPROVIDER_NAMEOVERRIDE)
+                or not field_reference[leaf_field]
             ):
-                field_reference = _dot_notation_to_struct_field_create_if_not_existing(
-                    res.resource["spec"]["forProvider"],
-                    for_provider_name_field,
-                    constructor="",
+                field_reference[leaf_field] = new_name
+            else:
+                field_reference[leaf_field] = self.get_name(
+                    res=res,
+                    name=field_reference[leaf_field],
                 )
-                self.log.debug(f"Mutating forProvider.{for_provider_name_field} for {res.ref}")
-                for_provider_name_field = for_provider_name_field.split(".")[-1]
-                # We ignore the current value of spec.forProvider.name if we
-                # are told to do so or if it is empty.
-                if (
-                    self._check_if_true(annotations, c.ANNOTATION_FORPROVIDER_NAMEOVERRIDE)
-                    or not field_reference[for_provider_name_field]
-                ):
-                    field_reference[for_provider_name_field] = new_name
-                else:
-                    # Mutate existing value
-                    field_reference[for_provider_name_field] = self.get_name(
-                        res=res,
-                        name=field_reference[for_provider_name_field],
-                    )
         except Exception as exc:
             msg = f"Failed to mutate forProvider.{for_provider_name_field} for {res.ref}: {exc!r}"
             raise message.EncodeError(msg) from exc
@@ -508,7 +506,6 @@ class Runner(grpcv1.FunctionRunnerService):
         """
         self.input = resource.struct_to_dict(req.input).get("spec", {})
         context = self.input.get(c.INPUT_CONTEXT, c.CONTEXT_KEY_ENVIRONMENT)
-        # Handle context keys with multiple parts (e.g., "dns.domain/name/group")
         self.log.debug(f"Reading context from key: '{context}'")
         try:
             if context.count("/") > 1:
@@ -516,12 +513,12 @@ class Runner(grpcv1.FunctionRunnerService):
                 request_context = req.context[context_gv][context_k]
             else:
                 request_context = req.context[context]
-            self.environment = resource.struct_to_dict(request_context)
         except (KeyError, ValueError) as exc:
             msg = f"Failed to read context '{context}': {exc!r}"
             self.log.error(msg)
             raise Exception(msg) from exc
 
+        self.environment = resource.struct_to_dict(request_context)
         self.environment.update(self.input.get(c.INPUT_VALUES, {}))
 
         a_prefix = self.input.get(c.INPUT_ANNOTATIONS, {}).get(c.INPUT_PREFIX, c.ANNOTATION_PREFIX)
@@ -543,10 +540,10 @@ class Runner(grpcv1.FunctionRunnerService):
 
     async def replicate_labels(self, res: Resource) -> None:
         """Replicate labels from the resource's metadata to a given resource field."""
+        field = res.metadata.get("annotations", {}).get(c.ANNOTATION_REPLICATE_LABELS_TO)
+        if not field:
+            return
         try:
-            field = res.metadata.get("annotations", {}).get(c.ANNOTATION_REPLICATE_LABELS_TO)
-            if not field:
-                return
             labels = res.metadata.get("labels", {})
             to = _dot_notation_to_struct_field_create_if_not_existing(res.resource, field, {})
             if labels and to is not None:

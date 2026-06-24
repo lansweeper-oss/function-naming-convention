@@ -1451,6 +1451,114 @@ TESTCASES = [
         ),
     ),
     TestCase(
+        reason="The external-name annotation should not be truncated to 63 characters.",
+        req=fnv1.RunFunctionRequest(
+            context=CONTEXT,
+            input=structpb.Struct(
+                fields={
+                    "spec": structpb.Value(
+                        struct_value=structpb.Struct(
+                            fields={
+                                c.INPUT_NAME_TEMPLATE: structpb.Value(
+                                    list_value=structpb.ListValue(
+                                        values=[
+                                            structpb.Value(string_value="name-prefix"),
+                                            structpb.Value(string_value="domain"),
+                                            structpb.Value(string_value="kind-code"),
+                                        ]
+                                    )
+                                ),
+                                c.INPUT_MAPPED_VALUES: structpb.Value(
+                                    list_value=structpb.ListValue(
+                                        values=[
+                                            structpb.Value(
+                                                struct_value=structpb.Struct(
+                                                    fields={
+                                                        "from": structpb.Value(string_value="kind"),
+                                                        "to": structpb.Value(
+                                                            string_value="kindCode"
+                                                        ),
+                                                        "map": structpb.Value(
+                                                            struct_value=structpb.Struct(
+                                                                fields={
+                                                                    "XTest": structpb.Value(
+                                                                        string_value="xt"
+                                                                    )
+                                                                }
+                                                            )
+                                                        ),
+                                                    }
+                                                )
+                                            ),
+                                        ]
+                                    )
+                                ),
+                            }
+                        )
+                    )
+                }
+            ),
+            desired=fnv1.State(
+                resources={
+                    "resource-a": fnv1.Resource(
+                        resource=resource.dict_to_struct(
+                            {
+                                "apiVersion": "example.crossplane.io/v1alpha1",
+                                "kind": "XTest",
+                                "metadata": {
+                                    "name": "grafana_cpu_utilization_too_high",
+                                    "annotations": {
+                                        f"{PREFIX}domain": "observability",
+                                        f"{c.ANNOTATION_INCLUDE_EXTERNAL_NAME}": "true",
+                                        f"{c.ANNOTATION_INCLUDE_FORPROVIDER_NAME}": "true",
+                                        f"{c.ANNOTATION_FORPROVIDER_NAMEOVERRIDE}": "true",
+                                        f"{c.ANNOTATION_INCLUDE_TAG_NAME_ANNOTATION}": "true",
+                                    },
+                                },
+                                "spec": {
+                                    "forProvider": {
+                                        "name": "placeholder",
+                                        "tags": {},
+                                    },
+                                },
+                            }
+                        )
+                    ),
+                }
+            ),
+        ),
+        want=fnv1.RunFunctionResponse(
+            meta=fnv1.ResponseMeta(ttl=durationpb.Duration(seconds=60)),
+            desired=fnv1.State(
+                resources={
+                    "resource-a": fnv1.Resource(
+                        resource=resource.dict_to_struct(
+                            {
+                                "apiVersion": "example.crossplane.io/v1alpha1",
+                                "kind": "XTest",
+                                "metadata": {
+                                    "annotations": {
+                                        "crossplane.io/external-name": "aa-tst-usw2-observability-xt-grafana_cpu_utilization_too_high",
+                                    },
+                                    "name": "aa-tst-usw2-observability-xt-grafana-cpu-utilization-too-high",
+                                },
+                                "spec": {
+                                    "forProvider": {
+                                        "name": "aa-tst-usw2-observability-xt-grafana_cpu_utilization_too_high",
+                                        "tags": {
+                                            "Name": "aa-tst-usw2-observability-xt-grafana_cpu_utilization_too_high",
+                                        },
+                                    },
+                                },
+                            }
+                        )
+                    ),
+                }
+            ),
+            context=CONTEXT,
+        ),
+    ),
+    TestCase(
         reason="Labels as tag annotation overrides input.",
         req=fnv1.RunFunctionRequest(
             context=CONTEXT,

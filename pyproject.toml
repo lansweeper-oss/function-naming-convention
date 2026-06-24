@@ -20,8 +20,8 @@ classifiers = [
 
 dependencies = [
   "case-converter==1.2.0",
-  "crossplane-function-sdk-python==0.11.0",
-  "click==8.3.3",
+  "crossplane-function-sdk-python==0.14.0",
+  "click==8.4.1",
   "PyYAML==6.0.3",
 ]
 
@@ -54,7 +54,7 @@ development = "python function/main.py --insecure --debug"
 type = "virtual"
 detached = true
 path = ".venv-lint"
-dependencies = ["ruff==0.15.2"]
+dependencies = ["ruff==0.15.19"]
 
 [tool.hatch.envs.lint.scripts]
 check = "ruff check function tests --fix && ruff format --diff function tests"

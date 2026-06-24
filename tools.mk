@@ -1,6 +1,9 @@
+include versions.mk
+
 HOST_ARCH := $(shell uname -m)
 HOST_RAW_OS := $(shell uname -s)
 HOST_OS := $(shell echo $(HOST_RAW_OS) | tr '[:upper:]' '[:lower:]')
+TIME := `date +%H:%M:%S`
 
 # translate x86_64 to amd64
 ifeq ($(HOST_ARCH),x86_64)
@@ -16,14 +19,26 @@ ifeq ($(origin TARGET_ARCH),undefined)
 	TARGET_ARCH := $(HOST_ARCH)
 endif
 
-TIME := `date +%H:%M:%S`
-
 define LOG_ECHO
-	echo -e "# \033[0;36m${TIME} \033[0;32m[INFO]\033[0m${1}"
+	$(if $(filter-out -1,$(V)), echo -e "\033[0;36m${TIME} \033[0;32m[INFO]\033[0m${1}" 1>&2)
 endef
 
 define LOG_INFO
-	@$(if $(filter $(V), 1 2), $(call LOG_ECHO, $(strip $(1))))
+	$(if $(filter $(V), 1 2), $(call LOG_ECHO, $(strip $(1))))
+endef
+
+# Install a tool binary.
+# $(1) = display name
+# $(2) = version
+# $(3) = download URL
+# $(4) = install commands (use TOOLS_TMP_DIR / TOOLS_BIN_DIR)
+define INSTALL_TOOL
+	@$(MAKE) -s tools.prepare
+	$(call LOG_ECHO, "🌏 Installing $(1) $(2)")
+	@curl -sL $(3) -o $(TOOLS_TMP_DIR)/$(1).download
+	$(4)
+	@chmod +x $@
+	$(call LOG_ECHO, "🌍 $(1) $(2) installed to $@")
 endef
 
 # ====================================================================================
@@ -39,25 +54,31 @@ tools.prepare:
 # ====================================================================================
 # Crossplane CLI
 
-CROSSPLANE_CLI_VERSION ?= v2.2.0
-CROSSPLANE_CLI_DOWNLOAD_URL ?= https://raw.githubusercontent.com/crossplane/crossplane/refs/tags/$(CROSSPLANE_CLI_VERSION)/install.sh
+CROSSPLANE_CLI_DOWNLOAD_URL ?= https://cli.crossplane.io/stable/$(CROSSPLANE_CLI_VERSION)/bin/$(HOST_OS)_$(TARGET_ARCH)/crossplane
 
-CROSSPLANE ?= $(TOOLS_BIN_DIR)/crossplane
+CROSSPLANE_CLI ?= $(TOOLS_BIN_DIR)/crossplane-cli
 
-$(CROSSPLANE):
-	@$(MAKE) -s tools.prepare
-	$(call LOG_INFO, "🌏 Installing Crossplane CLI $(CROSSPLANE_CLI_VERSION)")
-	@curl -sL $(CROSSPLANE_CLI_DOWNLOAD_URL) -o $(TOOLS_TMP_DIR)/install.sh
-	@XP_VERSION=$(CROSSPLANE_CLI_VERSION) sh $(TOOLS_TMP_DIR)/install.sh > /dev/null
-	@mv crossplane $(CROSSPLANE)
-	@rm -rf $(TOOLS_TMP_DIR)/install.sh
-	$(call LOG_INFO, "🌍 Crossplane CLI $(CROSSPLANE_CLI_VERSION) installed to $(CROSSPLANE)")
+$(CROSSPLANE_CLI):
+	@$(call INSTALL_TOOL,crossplane-cli,$(CROSSPLANE_CLI_VERSION),$(CROSSPLANE_CLI_DOWNLOAD_URL),\
+		@mv $(TOOLS_TMP_DIR)/crossplane-cli.download $@)
+
+# Keep CROSSPLANE as alias for backwards compatibility with Makefile targets
+CROSSPLANE ?= $(CROSSPLANE_CLI)
+
+# ====================================================================================
+# docker / podman
+# if docker is not present, try with podman
+
+DOCKER ?= $(shell command -v docker 2> /dev/null)
+PODMAN ?= $(shell command -v podman 2> /dev/null)
+
+ifeq ($(DOCKER),)
+DOCKER = $(PODMAN)
+endif
 
 # ====================================================================================
 # hatch
 
-HATCH_VERSION ?= v1.16.3
-HATCH_NUM_VERSION = $(HATCH_VERSION:v%=%)
 HATCH_BINARY_NAME = hatch-$(HOST_ARCH)-unknown-$(HOST_OS)-gnu
 HATCH = $(TOOLS_BIN_DIR)/hatch
 
@@ -72,40 +93,33 @@ endif
 HATCH_DOWNLOAD_URL ?= https://github.com/pypa/hatch/releases/download/hatch-$(HATCH_VERSION)/$(HATCH_BINARY_NAME).tar.gz
 
 $(HATCH):
-	@$(MAKE) -s tools.prepare
-	$(call LOG_INFO, "🌏 Installing Hatch $(HATCH_VERSION)")
-	@curl -sL $(HATCH_DOWNLOAD_URL) -o $(TOOLS_TMP_DIR)/hatch.tgz
-	@tar xz -C $(TOOLS_TMP_DIR) -f $(TOOLS_TMP_DIR)/hatch.tgz
-	@mv $(TOOLS_TMP_DIR)/hatch $(HATCH)
-	$(call LOG_INFO, "🌍 Hatch $(HATCH_VERSION) installed to $(HATCH)")
+	@$(call INSTALL_TOOL,hatch,$(HATCH_VERSION),$(HATCH_DOWNLOAD_URL),\
+		@tar xzf $(TOOLS_TMP_DIR)/hatch.download -C $(TOOLS_BIN_DIR))
 
 # ====================================================================================
-# docker / podman
-# if docker is not present, try with podman
+# kubectl-validate
 
-DOCKER ?= $(shell command -v docker 2> /dev/null)
-PODMAN ?= $(shell command -v podman 2> /dev/null)
+KUBECTL_VALIDATE_DOWNLOAD_URL ?= https://github.com/kubernetes-sigs/kubectl-validate/releases/download/v$(KUBECTL_VALIDATE_VERSION)/kubectl-validate_$(HOST_OS)_$(TARGET_ARCH).tar.gz
 
-ifeq ($(DOCKER),)
-DOCKER = $(PODMAN)
-endif
+KUBECTL_VALIDATE ?= $(TOOLS_BIN_DIR)/kubectl-validate
+
+$(KUBECTL_VALIDATE):
+	@$(call INSTALL_TOOL,kubectl-validate,$(KUBECTL_VALIDATE_VERSION),$(KUBECTL_VALIDATE_DOWNLOAD_URL),\
+		@tar xzf $(TOOLS_TMP_DIR)/kubectl-validate.download -C $(TOOLS_BIN_DIR) kubectl-validate)
 
 # ====================================================================================
 # up CLI
 
-UP_VERSION ?= v0.44.3
-UP_BINARY_NAME = up-$(HOST_ARCH)-unknown-$(HOST_OS)-gnu
+UP_DOWNLOAD_URL ?= https://cli.upbound.io/stable/$(UP_VERSION)/bin/$(HOST_OS)_$(TARGET_ARCH)/up
+
 UP = $(TOOLS_BIN_DIR)/up
 
 $(UP):
-	@$(MAKE) -s tools.prepare
-	$(call LOG_INFO, "🌏 Installing Up CLI $(UP_VERSION)")
-	@curl -sL "https://cli.upbound.io" | VERSION=$(UP_VERSION) sh
-	@mv up $(UP)
-	$(call LOG_INFO, "🌍 Up CLI $(UP_VERSION) installed to $(UP)")
+	@$(call INSTALL_TOOL,up,$(UP_VERSION),$(UP_DOWNLOAD_URL),\
+		@mv $(TOOLS_TMP_DIR)/up.download $@)
 
 # ====================================================================================
-# clean
+# cleanup
 
 tools.clean:
 	$(call LOG_INFO, "🧹 Removing tools directory $(TOOLS_DIR)")

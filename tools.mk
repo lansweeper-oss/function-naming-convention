@@ -66,6 +66,17 @@ $(CROSSPLANE_CLI):
 CROSSPLANE ?= $(CROSSPLANE_CLI)
 
 # ====================================================================================
+# docker / podman
+# if docker is not present, try with podman
+
+DOCKER ?= $(shell command -v docker 2> /dev/null)
+PODMAN ?= $(shell command -v podman 2> /dev/null)
+
+ifeq ($(DOCKER),)
+DOCKER = $(PODMAN)
+endif
+
+# ====================================================================================
 # hatch
 
 HATCH_BINARY_NAME = hatch-$(HOST_ARCH)-unknown-$(HOST_OS)-gnu
@@ -86,15 +97,15 @@ $(HATCH):
 		@tar xzf $(TOOLS_TMP_DIR)/hatch.download -C $(TOOLS_BIN_DIR))
 
 # ====================================================================================
-# docker / podman
-# if docker is not present, try with podman
+# kubectl-validate
 
-DOCKER ?= $(shell command -v docker 2> /dev/null)
-PODMAN ?= $(shell command -v podman 2> /dev/null)
+KUBECTL_VALIDATE_DOWNLOAD_URL ?= https://github.com/kubernetes-sigs/kubectl-validate/releases/download/v$(KUBECTL_VALIDATE_VERSION)/kubectl-validate_$(HOST_OS)_$(TARGET_ARCH).tar.gz
 
-ifeq ($(DOCKER),)
-DOCKER = $(PODMAN)
-endif
+KUBECTL_VALIDATE ?= $(TOOLS_BIN_DIR)/kubectl-validate
+
+$(KUBECTL_VALIDATE):
+	@$(call INSTALL_TOOL,kubectl-validate,$(KUBECTL_VALIDATE_VERSION),$(KUBECTL_VALIDATE_DOWNLOAD_URL),\
+		@tar xzf $(TOOLS_TMP_DIR)/kubectl-validate.download -C $(TOOLS_BIN_DIR) kubectl-validate)
 
 # ====================================================================================
 # up CLI
@@ -108,18 +119,7 @@ $(UP):
 		@mv $(TOOLS_TMP_DIR)/up.download $@)
 
 # ====================================================================================
-# kubectl-validate
-
-KUBECTL_VALIDATE_DOWNLOAD_URL ?= https://github.com/kubernetes-sigs/kubectl-validate/releases/download/v$(KUBECTL_VALIDATE_VERSION)/kubectl-validate_$(HOST_OS)_$(TARGET_ARCH).tar.gz
-
-KUBECTL_VALIDATE ?= $(TOOLS_BIN_DIR)/kubectl-validate
-
-$(KUBECTL_VALIDATE):
-	@$(call INSTALL_TOOL,kubectl-validate,$(KUBECTL_VALIDATE_VERSION),$(KUBECTL_VALIDATE_DOWNLOAD_URL),\
-		@tar xzf $(TOOLS_TMP_DIR)/kubectl-validate.download -C $(TOOLS_BIN_DIR) kubectl-validate)
-
-# ====================================================================================
-# clean
+# cleanup
 
 tools.clean:
 	$(call LOG_INFO, "🧹 Removing tools directory $(TOOLS_DIR)")

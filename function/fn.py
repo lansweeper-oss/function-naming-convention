@@ -195,9 +195,9 @@ class Runner(grpcv1.FunctionRunnerService):
         return prefix + "/" + name if prefix else name
 
     @staticmethod
-    def _sanitized_name(name: str) -> str:
+    def _sanitized_name(name: str, max_length: int = c.MAX_NAME_LENGTH) -> str:
         """Sanitize a name to be lowercase RFC 1123 subdomain compliant."""
-        return _to_rfc952_name(name, valid_chars=("-", ".")).lower()
+        return _to_rfc952_name(name, max_length=max_length, valid_chars=("-", ".")).lower()
 
     async def _cleanup_fn_specific_annotations(
         self,
@@ -376,9 +376,14 @@ class Runner(grpcv1.FunctionRunnerService):
                 res=res,
                 name=current_name,
             )
-            # metadata.name needs to be RFC1123 compliant, so even if the
-            # Cloud provider name is not, we need to ensure it is.
-            new_metadata_name = self._sanitized_name(new_name)
+            annotations = res.metadata.get("annotations", {})
+            restrict = self._check_if_true(
+                annotations,
+                c.ANNOTATION_RESTRICT_RFC1123_NAME_LENGTH,
+                default=self.input.get(c.INPUT_RESTRICT_RFC1123_NAME_LENGTH, False),
+            )
+            max_length = c.MAX_NAME_LENGTH if restrict else c.MAX_PREFIXED_NAME_LENGTH
+            new_metadata_name = self._sanitized_name(new_name, max_length=max_length)
             if new_metadata_name != current_name:
                 self.log.debug(f"Mutating name to {new_metadata_name}")
                 res.metadata["name"] = new_metadata_name

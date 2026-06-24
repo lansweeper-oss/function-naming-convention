@@ -1559,6 +1559,334 @@ TESTCASES = [
         ),
     ),
     TestCase(
+        reason="The metadata.name should exceed 63 characters by default (up to 253).",
+        req=fnv1.RunFunctionRequest(
+            context=CONTEXT,
+            input=structpb.Struct(
+                fields={
+                    "spec": structpb.Value(
+                        struct_value=structpb.Struct(
+                            fields={
+                                c.INPUT_NAME_TEMPLATE: structpb.Value(
+                                    list_value=structpb.ListValue(
+                                        values=[
+                                            structpb.Value(string_value="name-prefix"),
+                                            structpb.Value(string_value="domain"),
+                                            structpb.Value(string_value="kind-code"),
+                                        ]
+                                    )
+                                ),
+                                c.INPUT_MAPPED_VALUES: structpb.Value(
+                                    list_value=structpb.ListValue(
+                                        values=[
+                                            structpb.Value(
+                                                struct_value=structpb.Struct(
+                                                    fields={
+                                                        "from": structpb.Value(string_value="kind"),
+                                                        "to": structpb.Value(
+                                                            string_value="kindCode"
+                                                        ),
+                                                        "map": structpb.Value(
+                                                            struct_value=structpb.Struct(
+                                                                fields={
+                                                                    "XTest": structpb.Value(
+                                                                        string_value="xt"
+                                                                    )
+                                                                }
+                                                            )
+                                                        ),
+                                                    }
+                                                )
+                                            ),
+                                        ]
+                                    )
+                                ),
+                            }
+                        )
+                    )
+                }
+            ),
+            desired=fnv1.State(
+                resources={
+                    "resource-a": fnv1.Resource(
+                        resource=resource.dict_to_struct(
+                            {
+                                "apiVersion": "example.crossplane.io/v1alpha1",
+                                "kind": "XTest",
+                                "metadata": {
+                                    "name": "grafana_cpu_utilization_too_high_alert",
+                                    "annotations": {
+                                        f"{PREFIX}domain": "observability",
+                                        f"{c.ANNOTATION_INCLUDE_EXTERNAL_NAME}": "true",
+                                        f"{c.ANNOTATION_INCLUDE_FORPROVIDER_NAME}": "true",
+                                        f"{c.ANNOTATION_FORPROVIDER_NAMEOVERRIDE}": "true",
+                                        f"{c.ANNOTATION_INCLUDE_TAG_NAME_ANNOTATION}": "true",
+                                    },
+                                },
+                                "spec": {
+                                    "forProvider": {
+                                        "name": "placeholder",
+                                        "tags": {},
+                                    },
+                                },
+                            }
+                        )
+                    ),
+                }
+            ),
+        ),
+        want=fnv1.RunFunctionResponse(
+            meta=fnv1.ResponseMeta(ttl=durationpb.Duration(seconds=60)),
+            desired=fnv1.State(
+                resources={
+                    "resource-a": fnv1.Resource(
+                        resource=resource.dict_to_struct(
+                            {
+                                "apiVersion": "example.crossplane.io/v1alpha1",
+                                "kind": "XTest",
+                                "metadata": {
+                                    "annotations": {
+                                        "crossplane.io/external-name": "aa-tst-usw2-observability-xt-grafana_cpu_utilization_too_high_alert",
+                                    },
+                                    "name": "aa-tst-usw2-observability-xt-grafana-cpu-utilization-too-high-alert",
+                                },
+                                "spec": {
+                                    "forProvider": {
+                                        "name": "aa-tst-usw2-observability-xt-grafana_cpu_utilization_too_high_alert",
+                                        "tags": {
+                                            "Name": "aa-tst-usw2-observability-xt-grafana_cpu_utilization_too_high_alert",
+                                        },
+                                    },
+                                },
+                            }
+                        )
+                    ),
+                }
+            ),
+            context=CONTEXT,
+        ),
+    ),
+    TestCase(
+        reason="The metadata.name should be truncated to 63 characters when restrict-rfc1123-name-length annotation is set.",
+        req=fnv1.RunFunctionRequest(
+            context=CONTEXT,
+            input=structpb.Struct(
+                fields={
+                    "spec": structpb.Value(
+                        struct_value=structpb.Struct(
+                            fields={
+                                c.INPUT_NAME_TEMPLATE: structpb.Value(
+                                    list_value=structpb.ListValue(
+                                        values=[
+                                            structpb.Value(string_value="name-prefix"),
+                                            structpb.Value(string_value="domain"),
+                                            structpb.Value(string_value="kind-code"),
+                                        ]
+                                    )
+                                ),
+                                c.INPUT_MAPPED_VALUES: structpb.Value(
+                                    list_value=structpb.ListValue(
+                                        values=[
+                                            structpb.Value(
+                                                struct_value=structpb.Struct(
+                                                    fields={
+                                                        "from": structpb.Value(string_value="kind"),
+                                                        "to": structpb.Value(
+                                                            string_value="kindCode"
+                                                        ),
+                                                        "map": structpb.Value(
+                                                            struct_value=structpb.Struct(
+                                                                fields={
+                                                                    "XTest": structpb.Value(
+                                                                        string_value="xt"
+                                                                    )
+                                                                }
+                                                            )
+                                                        ),
+                                                    }
+                                                )
+                                            ),
+                                        ]
+                                    )
+                                ),
+                            }
+                        )
+                    )
+                }
+            ),
+            desired=fnv1.State(
+                resources={
+                    "resource-a": fnv1.Resource(
+                        resource=resource.dict_to_struct(
+                            {
+                                "apiVersion": "example.crossplane.io/v1alpha1",
+                                "kind": "XTest",
+                                "metadata": {
+                                    "name": "grafana_cpu_utilization_too_high_alert",
+                                    "annotations": {
+                                        f"{PREFIX}domain": "observability",
+                                        f"{c.ANNOTATION_INCLUDE_EXTERNAL_NAME}": "true",
+                                        f"{c.ANNOTATION_INCLUDE_FORPROVIDER_NAME}": "true",
+                                        f"{c.ANNOTATION_FORPROVIDER_NAMEOVERRIDE}": "true",
+                                        f"{c.ANNOTATION_INCLUDE_TAG_NAME_ANNOTATION}": "true",
+                                        f"{c.ANNOTATION_RESTRICT_RFC1123_NAME_LENGTH}": "true",
+                                    },
+                                },
+                                "spec": {
+                                    "forProvider": {
+                                        "name": "placeholder",
+                                        "tags": {},
+                                    },
+                                },
+                            }
+                        )
+                    ),
+                }
+            ),
+        ),
+        want=fnv1.RunFunctionResponse(
+            meta=fnv1.ResponseMeta(ttl=durationpb.Duration(seconds=60)),
+            desired=fnv1.State(
+                resources={
+                    "resource-a": fnv1.Resource(
+                        resource=resource.dict_to_struct(
+                            {
+                                "apiVersion": "example.crossplane.io/v1alpha1",
+                                "kind": "XTest",
+                                "metadata": {
+                                    "annotations": {
+                                        "crossplane.io/external-name": "aa-tst-usw2-observability-xt-grafana_cpu_utilization_too_high_alert",
+                                    },
+                                    "name": "aa-tst-usw2-observability-xt-grafana-cpu-utilization-too-high-a",
+                                },
+                                "spec": {
+                                    "forProvider": {
+                                        "name": "aa-tst-usw2-observability-xt-grafana_cpu_utilization_too_high_alert",
+                                        "tags": {
+                                            "Name": "aa-tst-usw2-observability-xt-grafana_cpu_utilization_too_high_alert",
+                                        },
+                                    },
+                                },
+                            }
+                        )
+                    ),
+                }
+            ),
+            context=CONTEXT,
+        ),
+    ),
+    TestCase(
+        reason="The metadata.name should be truncated to 63 characters when restrictRfc1123NameLength input is set globally.",
+        req=fnv1.RunFunctionRequest(
+            context=CONTEXT,
+            input=structpb.Struct(
+                fields={
+                    "spec": structpb.Value(
+                        struct_value=structpb.Struct(
+                            fields={
+                                c.INPUT_RESTRICT_RFC1123_NAME_LENGTH: structpb.Value(
+                                    string_value="true"
+                                ),
+                                c.INPUT_NAME_TEMPLATE: structpb.Value(
+                                    list_value=structpb.ListValue(
+                                        values=[
+                                            structpb.Value(string_value="name-prefix"),
+                                            structpb.Value(string_value="domain"),
+                                            structpb.Value(string_value="kind-code"),
+                                        ]
+                                    )
+                                ),
+                                c.INPUT_MAPPED_VALUES: structpb.Value(
+                                    list_value=structpb.ListValue(
+                                        values=[
+                                            structpb.Value(
+                                                struct_value=structpb.Struct(
+                                                    fields={
+                                                        "from": structpb.Value(string_value="kind"),
+                                                        "to": structpb.Value(
+                                                            string_value="kindCode"
+                                                        ),
+                                                        "map": structpb.Value(
+                                                            struct_value=structpb.Struct(
+                                                                fields={
+                                                                    "XTest": structpb.Value(
+                                                                        string_value="xt"
+                                                                    )
+                                                                }
+                                                            )
+                                                        ),
+                                                    }
+                                                )
+                                            ),
+                                        ]
+                                    )
+                                ),
+                            }
+                        )
+                    )
+                }
+            ),
+            desired=fnv1.State(
+                resources={
+                    "resource-a": fnv1.Resource(
+                        resource=resource.dict_to_struct(
+                            {
+                                "apiVersion": "example.crossplane.io/v1alpha1",
+                                "kind": "XTest",
+                                "metadata": {
+                                    "name": "grafana_cpu_utilization_too_high_alert",
+                                    "annotations": {
+                                        f"{PREFIX}domain": "observability",
+                                        f"{c.ANNOTATION_INCLUDE_EXTERNAL_NAME}": "true",
+                                        f"{c.ANNOTATION_INCLUDE_FORPROVIDER_NAME}": "true",
+                                        f"{c.ANNOTATION_FORPROVIDER_NAMEOVERRIDE}": "true",
+                                        f"{c.ANNOTATION_INCLUDE_TAG_NAME_ANNOTATION}": "true",
+                                    },
+                                },
+                                "spec": {
+                                    "forProvider": {
+                                        "name": "placeholder",
+                                        "tags": {},
+                                    },
+                                },
+                            }
+                        )
+                    ),
+                }
+            ),
+        ),
+        want=fnv1.RunFunctionResponse(
+            meta=fnv1.ResponseMeta(ttl=durationpb.Duration(seconds=60)),
+            desired=fnv1.State(
+                resources={
+                    "resource-a": fnv1.Resource(
+                        resource=resource.dict_to_struct(
+                            {
+                                "apiVersion": "example.crossplane.io/v1alpha1",
+                                "kind": "XTest",
+                                "metadata": {
+                                    "annotations": {
+                                        "crossplane.io/external-name": "aa-tst-usw2-observability-xt-grafana_cpu_utilization_too_high_alert",
+                                    },
+                                    "name": "aa-tst-usw2-observability-xt-grafana-cpu-utilization-too-high-a",
+                                },
+                                "spec": {
+                                    "forProvider": {
+                                        "name": "aa-tst-usw2-observability-xt-grafana_cpu_utilization_too_high_alert",
+                                        "tags": {
+                                            "Name": "aa-tst-usw2-observability-xt-grafana_cpu_utilization_too_high_alert",
+                                        },
+                                    },
+                                },
+                            }
+                        )
+                    ),
+                }
+            ),
+            context=CONTEXT,
+        ),
+    ),
+    TestCase(
         reason="Labels as tag annotation overrides input.",
         req=fnv1.RunFunctionRequest(
             context=CONTEXT,

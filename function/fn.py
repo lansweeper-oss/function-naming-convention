@@ -36,7 +36,7 @@ def _dot_notation_to_struct_field(
 def _dot_notation_to_struct_field_create_if_not_existing(
     struct: structpb.Struct,
     path: str,
-    constructor: any,
+    constructor: dict | str,
 ) -> structpb.Struct:
     """Get a reference to a field from a Struct using dot notation.
 
@@ -276,7 +276,7 @@ class Runner(grpcv1.FunctionRunnerService):
         name_prefix = self._format_name_prefix(
             res.environment, name_prefix_items, name_items_separator
         )
-        return (name_prefix + name_items_separator + name)[: c.MAX_NAME_LENGTH]
+        return name_prefix + name_items_separator + name
 
     def get_labels(self, res: Resource) -> tuple[dict, set[str]]:
         """Get the labels for the resource as per the naming convention.

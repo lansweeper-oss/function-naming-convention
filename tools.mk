@@ -20,7 +20,7 @@ ifeq ($(origin TARGET_ARCH),undefined)
 endif
 
 define LOG_ECHO
-	$(if $(filter-out -1,$(V)), echo -e "\033[0;36m${TIME} \033[0;32m[INFO]\033[0m${1}" 1>&2)
+	$(if $(filter -1,$(V)),,echo -e "\033[0;36m${TIME} \033[0;32m[INFO]\033[0m${1}" 1>&2)
 endef
 
 define LOG_INFO

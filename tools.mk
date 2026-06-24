@@ -99,14 +99,13 @@ endif
 # ====================================================================================
 # up CLI
 
+UP_DOWNLOAD_URL ?= https://cli.upbound.io/stable/$(UP_VERSION)/bin/$(HOST_OS)_$(TARGET_ARCH)/up
+
 UP = $(TOOLS_BIN_DIR)/up
 
 $(UP):
-	@$(MAKE) -s tools.prepare
-	$(call LOG_ECHO, "🌏 Installing Up CLI $(UP_VERSION)")
-	@curl -sL "https://cli.upbound.io" | VERSION=$(UP_VERSION) sh
-	@mv up $(UP)
-	$(call LOG_ECHO, "🌍 Up CLI $(UP_VERSION) installed to $(UP)")
+	@$(call INSTALL_TOOL,up,$(UP_VERSION),$(UP_DOWNLOAD_URL),\
+		@mv $(TOOLS_TMP_DIR)/up.download $@)
 
 # ====================================================================================
 # kubectl-validate

@@ -873,11 +873,47 @@ kebabCaseLabelsAndTags: false
 # Output: accountCode
 ```
 
+### Name Length Limits
+
+By default, `metadata.name` allows up to **253 characters**. This is suitable for most composed resources whose
+names are not used for DNS resolution (e.g., AWS resources, Crossplane managed resources that are only addressed
+by their external name).
+
+For resources that **are** DNS-addressed (e.g., Kubernetes Services, Ingresses, or any resource whose
+`metadata.name` is used as a DNS label), you should restrict the name length to 63 characters using the
+`restrict-rfc1123-name-length` annotation or the `restrictRfc1123NameLength` global input.
+
+**When to use the 63-character restriction:**
+
+- Kubernetes **Services**: their name becomes part of the DNS record (`<name>.<namespace>.svc.cluster.local`).
+- Kubernetes **Ingresses**: hostname derivation may depend on the resource name.
+- Any resource where `metadata.name` is used as a **DNS label** (each label in a DNS name is limited to 63
+  characters per [RFC 1123][]).
+- Provider resources that enforce their own name length limits.
+
+**Per-resource restriction (annotation):**
+
+```yaml
+metadata:
+  annotations:
+    function-naming-convention/restrict-rfc1123-name-length: "true"
+  name: my-service
+```
+
+**Global restriction (function input):**
+
+```yaml
+spec:
+  restrictRfc1123NameLength: true
+```
+
+The annotation takes precedence over the global input, so you can set it globally and override per-resource.
+
 ### RFC 1123 Compliance
 
-All names and labels are automatically sanitized to RFC 1123 compliance:
+All names and labels are automatically sanitized:
 
-- Maximum 63 characters for names.
+- Maximum **253 characters** for `metadata.name` (default) or **63 characters** when restricted.
 - Maximum 253 characters for label prefixes.
 - Only alphanumeric, hyphens, dots (for labels), and underscores (when not kebab-cased, which is made
   mandatory for Kubernetes resource names).
@@ -910,6 +946,7 @@ Tags are applied in this order (later overrides earlier):
 | `labels.prefix` | string | `""` | Prefix for generated labels |
 | `labels.separator` | string | `/` | Separator between label prefix and key |
 | `nameTemplateFields` | array[string] | `[]` | Ordered list of fields for name template |
+| `restrictRfc1123NameLength` | boolean | `false` | Restrict `metadata.name` to 63 characters (DNS label limit) |
 | `tags` | object | `{}` | Static tags to add to all resources |
 | `tagsField` | string | `""` | Context field containing tags to inject |
 | `templateItemsSeparator` | string | `-` | Separator between name template items (only `-` or `.`) |
@@ -933,6 +970,7 @@ Tags are applied in this order (later overrides earlier):
 | `labels-to-field` | string | Copy labels to custom field (dot notation) |
 | `name-fields-separator` | string | Override name template separator |
 | `name-template` | string | Override name template (separator-separated fields) |
+| `restrict-rfc1123-name-length` | boolean | Restrict `metadata.name` to 63 characters (DNS label limit) |
 | `skip-name-modify` | boolean | Skip name modification for this resource |
 | `tag-name` | boolean | Set `Name` tag to mutated name |
 | `tags-field` | string | Context field to load tags from |
@@ -944,7 +982,8 @@ All annotations accept `"true"`, `"yes"`, `"on"`, `"y"` for boolean true values 
 
 | Constant | Value | Description |
 |----------|-------|-------------|
-| Maximum name length | 63 | RFC 1123 limit |
+| Default maximum name length | 253 | Kubernetes object name limit |
+| Restricted maximum name length | 63 | RFC 1123 DNS label limit |
 | Maximum prefixed name length | 253 | RFC 1123 limit for label prefixes |
 | Default annotation prefix | `function-naming-convention` | - |
 | Default annotation separator | `/` | - |

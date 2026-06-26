@@ -5,6 +5,7 @@ to have a proper name, labels and (optionally) tags.
 """
 
 import asyncio
+import datetime
 from copy import deepcopy
 
 import grpc
@@ -593,7 +594,11 @@ class Runner(grpcv1.FunctionRunnerService):
         self, req: fnv1.RunFunctionRequest, context: grpc.aio.ServicerContext
     ) -> fnv1.RunFunctionResponse:
         """Run the function."""
-        rsp = response.to(req)
+        ttl_seconds = resource.struct_to_dict(req.input).get("spec", {}).get(c.INPUT_RESPONSE_TTL)
+        if ttl_seconds is not None:
+            rsp = response.to(req, ttl=datetime.timedelta(seconds=int(ttl_seconds)))
+        else:
+            rsp = response.to(req)
         self.log.debug("Invoked function-naming-convention")
         try:
             await self.read_environment(req)

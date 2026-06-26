@@ -928,6 +928,35 @@ spec:
 
 The annotation takes precedence over the global input, so you can set it globally and override per-resource.
 
+#### Name Too Long Behavior (Breaking Change)
+
+By default, if a mutated name exceeds the maximum length (63 or 253 characters depending on configuration),
+the function **fails with an error**. The error message includes the full mutated name, the resource reference,
+the maximum allowed length, and the actual length.
+
+Previous versions silently truncated (cropped) the name to fit the limit, which could cause hard-to-debug issues
+like name collisions or unexpected resource identifiers.
+
+To restore the previous truncation behavior, set `cropOnNameTooLong` globally or use the `crop-on-name-too-long`
+annotation per resource:
+
+**Global (function input):**
+
+```yaml
+spec:
+  cropOnNameTooLong: true
+```
+
+**Per-resource (annotation):**
+
+```yaml
+metadata:
+  annotations:
+    function-naming-convention/crop-on-name-too-long: "true"
+```
+
+When cropping is enabled, the name is truncated to the maximum length and any trailing hyphens are stripped.
+
 ### RFC 1123 Compliance
 
 All names and labels are automatically sanitized:
@@ -958,6 +987,7 @@ Tags are applied in this order (later overrides earlier):
 | `annotations.prefix` | string | `function-naming-convention` | Prefix for function annotations |
 | `annotations.separator` | string | `/` | Separator between prefix and annotation key |
 | `context` | string | `apiextensions.crossplane.io/environment` | Context key to read environment from |
+| `cropOnNameTooLong` | boolean | `false` | Crop names that exceed the maximum length instead of failing |
 | `envToLabel` | array[string] | `[]` | List of context fields to convert to labels |
 | `kebabCaseLabelsAndTags` | boolean | `true` | Convert labels/tags to kebab-case |
 | `labels` | object | - | Label configuration |
@@ -982,6 +1012,7 @@ Tags are applied in this order (later overrides earlier):
 
 | Annotation | Type | Description |
 |------------|------|-------------|
+| `crop-on-name-too-long` | boolean | Crop names that exceed the maximum length instead of failing |
 | `external-name` | boolean | Write mutated name to `crossplane.io/external-name` |
 | `for-provider-name` | boolean | Write mutated name to `spec.forProvider.name` |
 | `for-provider-name-field` | string | Custom path for provider name field (dot notation) |

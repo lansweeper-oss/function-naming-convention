@@ -1667,7 +1667,7 @@ TESTCASES = [
         ),
     ),
     TestCase(
-        reason="The metadata.name should be truncated to 63 characters when restrict-rfc1123-name-length annotation is set.",
+        reason="The metadata.name should be truncated to 63 characters when crop-on-name-too-long annotation is set.",
         req=fnv1.RunFunctionRequest(
             context=CONTEXT,
             input=structpb.Struct(
@@ -1730,6 +1730,7 @@ TESTCASES = [
                                         f"{c.ANNOTATION_FORPROVIDER_NAMEOVERRIDE}": "true",
                                         f"{c.ANNOTATION_INCLUDE_TAG_NAME_ANNOTATION}": "true",
                                         f"{c.ANNOTATION_RESTRICT_RFC1123_NAME_LENGTH}": "true",
+                                        f"{c.ANNOTATION_CROP_ON_NAME_TOO_LONG}": "true",
                                     },
                                 },
                                 "spec": {
@@ -1776,7 +1777,7 @@ TESTCASES = [
         ),
     ),
     TestCase(
-        reason="The metadata.name should be truncated to 63 characters when restrictRfc1123NameLength input is set globally.",
+        reason="The metadata.name should be truncated to 63 characters when restrictRfc1123NameLength and cropOnNameTooLong inputs are set globally.",
         req=fnv1.RunFunctionRequest(
             context=CONTEXT,
             input=structpb.Struct(
@@ -1787,6 +1788,7 @@ TESTCASES = [
                                 c.INPUT_RESTRICT_RFC1123_NAME_LENGTH: structpb.Value(
                                     string_value="true"
                                 ),
+                                c.INPUT_CROP_ON_NAME_TOO_LONG: structpb.Value(string_value="true"),
                                 c.INPUT_NAME_TEMPLATE: structpb.Value(
                                     list_value=structpb.ListValue(
                                         values=[
@@ -2161,6 +2163,234 @@ TESTCASES = [
     ),
 ]
 
+TESTEXCEPTIONS_NAME_TOO_LONG = [
+    TestCase(
+        reason="The function should fail when metadata.name exceeds 63 characters with restrict-rfc1123-name-length annotation (default behavior).",
+        req=fnv1.RunFunctionRequest(
+            context=CONTEXT,
+            input=structpb.Struct(
+                fields={
+                    "spec": structpb.Value(
+                        struct_value=structpb.Struct(
+                            fields={
+                                c.INPUT_NAME_TEMPLATE: structpb.Value(
+                                    list_value=structpb.ListValue(
+                                        values=[
+                                            structpb.Value(string_value="name-prefix"),
+                                            structpb.Value(string_value="domain"),
+                                            structpb.Value(string_value="kind-code"),
+                                        ]
+                                    )
+                                ),
+                                c.INPUT_MAPPED_VALUES: structpb.Value(
+                                    list_value=structpb.ListValue(
+                                        values=[
+                                            structpb.Value(
+                                                struct_value=structpb.Struct(
+                                                    fields={
+                                                        "from": structpb.Value(string_value="kind"),
+                                                        "to": structpb.Value(
+                                                            string_value="kindCode"
+                                                        ),
+                                                        "map": structpb.Value(
+                                                            struct_value=structpb.Struct(
+                                                                fields={
+                                                                    "XTest": structpb.Value(
+                                                                        string_value="xt"
+                                                                    )
+                                                                }
+                                                            )
+                                                        ),
+                                                    }
+                                                )
+                                            ),
+                                        ]
+                                    )
+                                ),
+                            }
+                        )
+                    )
+                }
+            ),
+            desired=fnv1.State(
+                resources={
+                    "resource-a": fnv1.Resource(
+                        resource=resource.dict_to_struct(
+                            {
+                                "apiVersion": "example.crossplane.io/v1alpha1",
+                                "kind": "XTest",
+                                "metadata": {
+                                    "name": "grafana_cpu_utilization_too_high_alert",
+                                    "annotations": {
+                                        f"{PREFIX}domain": "observability",
+                                        f"{c.ANNOTATION_INCLUDE_EXTERNAL_NAME}": "true",
+                                        f"{c.ANNOTATION_INCLUDE_FORPROVIDER_NAME}": "true",
+                                        f"{c.ANNOTATION_FORPROVIDER_NAMEOVERRIDE}": "true",
+                                        f"{c.ANNOTATION_INCLUDE_TAG_NAME_ANNOTATION}": "true",
+                                        f"{c.ANNOTATION_RESTRICT_RFC1123_NAME_LENGTH}": "true",
+                                    },
+                                },
+                                "spec": {
+                                    "forProvider": {
+                                        "name": "placeholder",
+                                        "tags": {},
+                                    },
+                                },
+                            }
+                        )
+                    ),
+                }
+            ),
+        ),
+        want=fnv1.RunFunctionResponse(
+            meta=fnv1.ResponseMeta(ttl=durationpb.Duration(seconds=60)),
+            desired=fnv1.State(
+                resources={
+                    "resource-a": fnv1.Resource(
+                        resource=resource.dict_to_struct(
+                            {
+                                "apiVersion": "example.crossplane.io/v1alpha1",
+                                "kind": "XTest",
+                                "metadata": {
+                                    "name": "grafana_cpu_utilization_too_high_alert",
+                                    "annotations": {
+                                        f"{PREFIX}domain": "observability",
+                                        f"{c.ANNOTATION_INCLUDE_EXTERNAL_NAME}": "true",
+                                        f"{c.ANNOTATION_INCLUDE_FORPROVIDER_NAME}": "true",
+                                        f"{c.ANNOTATION_FORPROVIDER_NAMEOVERRIDE}": "true",
+                                        f"{c.ANNOTATION_INCLUDE_TAG_NAME_ANNOTATION}": "true",
+                                        f"{c.ANNOTATION_RESTRICT_RFC1123_NAME_LENGTH}": "true",
+                                    },
+                                },
+                                "spec": {
+                                    "forProvider": {
+                                        "name": "placeholder",
+                                        "tags": {},
+                                    },
+                                },
+                            }
+                        )
+                    ),
+                }
+            ),
+            context=CONTEXT,
+        ),
+    ),
+    TestCase(
+        reason="The function should fail when metadata.name exceeds 63 characters with restrictRfc1123NameLength global input (default behavior).",
+        req=fnv1.RunFunctionRequest(
+            context=CONTEXT,
+            input=structpb.Struct(
+                fields={
+                    "spec": structpb.Value(
+                        struct_value=structpb.Struct(
+                            fields={
+                                c.INPUT_RESTRICT_RFC1123_NAME_LENGTH: structpb.Value(
+                                    string_value="true"
+                                ),
+                                c.INPUT_NAME_TEMPLATE: structpb.Value(
+                                    list_value=structpb.ListValue(
+                                        values=[
+                                            structpb.Value(string_value="name-prefix"),
+                                            structpb.Value(string_value="domain"),
+                                            structpb.Value(string_value="kind-code"),
+                                        ]
+                                    )
+                                ),
+                                c.INPUT_MAPPED_VALUES: structpb.Value(
+                                    list_value=structpb.ListValue(
+                                        values=[
+                                            structpb.Value(
+                                                struct_value=structpb.Struct(
+                                                    fields={
+                                                        "from": structpb.Value(string_value="kind"),
+                                                        "to": structpb.Value(
+                                                            string_value="kindCode"
+                                                        ),
+                                                        "map": structpb.Value(
+                                                            struct_value=structpb.Struct(
+                                                                fields={
+                                                                    "XTest": structpb.Value(
+                                                                        string_value="xt"
+                                                                    )
+                                                                }
+                                                            )
+                                                        ),
+                                                    }
+                                                )
+                                            ),
+                                        ]
+                                    )
+                                ),
+                            }
+                        )
+                    )
+                }
+            ),
+            desired=fnv1.State(
+                resources={
+                    "resource-a": fnv1.Resource(
+                        resource=resource.dict_to_struct(
+                            {
+                                "apiVersion": "example.crossplane.io/v1alpha1",
+                                "kind": "XTest",
+                                "metadata": {
+                                    "name": "grafana_cpu_utilization_too_high_alert",
+                                    "annotations": {
+                                        f"{PREFIX}domain": "observability",
+                                        f"{c.ANNOTATION_INCLUDE_EXTERNAL_NAME}": "true",
+                                        f"{c.ANNOTATION_INCLUDE_FORPROVIDER_NAME}": "true",
+                                        f"{c.ANNOTATION_FORPROVIDER_NAMEOVERRIDE}": "true",
+                                        f"{c.ANNOTATION_INCLUDE_TAG_NAME_ANNOTATION}": "true",
+                                    },
+                                },
+                                "spec": {
+                                    "forProvider": {
+                                        "name": "placeholder",
+                                        "tags": {},
+                                    },
+                                },
+                            }
+                        )
+                    ),
+                }
+            ),
+        ),
+        want=fnv1.RunFunctionResponse(
+            meta=fnv1.ResponseMeta(ttl=durationpb.Duration(seconds=60)),
+            desired=fnv1.State(
+                resources={
+                    "resource-a": fnv1.Resource(
+                        resource=resource.dict_to_struct(
+                            {
+                                "apiVersion": "example.crossplane.io/v1alpha1",
+                                "kind": "XTest",
+                                "metadata": {
+                                    "name": "grafana_cpu_utilization_too_high_alert",
+                                    "annotations": {
+                                        f"{PREFIX}domain": "observability",
+                                        f"{c.ANNOTATION_INCLUDE_EXTERNAL_NAME}": "true",
+                                        f"{c.ANNOTATION_INCLUDE_FORPROVIDER_NAME}": "true",
+                                        f"{c.ANNOTATION_FORPROVIDER_NAMEOVERRIDE}": "true",
+                                        f"{c.ANNOTATION_INCLUDE_TAG_NAME_ANNOTATION}": "true",
+                                    },
+                                },
+                                "spec": {
+                                    "forProvider": {
+                                        "name": "placeholder",
+                                        "tags": {},
+                                    },
+                                },
+                            }
+                        )
+                    ),
+                }
+            ),
+            context=CONTEXT,
+        ),
+    ),
+]
+
 TESTEXCEPTIONS = [
     TestCase(
         reason="The function should abort when name items are missing and leave resource unchanged.",
@@ -2310,6 +2540,18 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
         runner = fn.Runner()
         mock_context = mock.AsyncMock(spec=grpc.aio.ServicerContext)
         for i, case in enumerate(TESTEXCEPTIONS):
+            got = await runner.RunFunction(case.req, mock_context)
+            mock_context.abort.assert_called()
+            self.assertEqual(
+                json_format.MessageToDict(case.want),
+                json_format.MessageToDict(got),
+                msg=f"Failed for test number {i}: '{case.reason}' (-want, +got)",
+            )
+
+    async def test_exceptions_name_too_long(self) -> None:
+        runner = fn.Runner()
+        mock_context = mock.AsyncMock(spec=grpc.aio.ServicerContext)
+        for i, case in enumerate(TESTEXCEPTIONS_NAME_TOO_LONG):
             got = await runner.RunFunction(case.req, mock_context)
             mock_context.abort.assert_called()
             self.assertEqual(

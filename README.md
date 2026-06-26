@@ -277,6 +277,23 @@ spec:
 
 With this configuration, use annotations like: `fn.naming-external-name: "true"`
 
+#### Response TTL
+
+Control how long Crossplane caches the function response before re-running:
+
+```yaml
+spec:
+  # Custom TTL in seconds (default: 60)
+  responseTtl: 300
+
+  # Disable caching entirely (useful for realtime compositions)
+  responseTtl: 0
+```
+
+When `responseTtl` is set to `0`, the function response is never cached and will not contribute
+to periodic reconciliations. This is useful for realtime compositions where resources must always
+reflect the latest state.
+
 #### Complete Global Configuration Example
 
 ```yaml
@@ -308,6 +325,8 @@ With this configuration, use annotations like: `fn.naming-external-name: "true"`
         labelsAsTags: true
 
       kebabCaseLabelsAndTags: true
+
+      responseTtl: 300
 
       tags:
         ManagedBy: crossplane
@@ -946,6 +965,7 @@ Tags are applied in this order (later overrides earlier):
 | `labels.prefix` | string | `""` | Prefix for generated labels |
 | `labels.separator` | string | `/` | Separator between label prefix and key |
 | `nameTemplateFields` | array[string] | `[]` | Ordered list of fields for name template |
+| `responseTtl` | integer | `60` | Response cache TTL in seconds. Set to `0` to disable caching (no periodic reconciliation) |
 | `restrictRfc1123NameLength` | boolean | `false` | Restrict `metadata.name` to 63 characters (DNS label limit) |
 | `tags` | object | `{}` | Static tags to add to all resources |
 | `tagsField` | string | `""` | Context field containing tags to inject |

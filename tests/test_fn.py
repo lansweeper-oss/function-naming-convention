@@ -2049,6 +2049,116 @@ TESTCASES = [
             context=CONTEXT,
         ),
     ),
+    TestCase(
+        reason="The function should use a custom response TTL when responseTtl is set.",
+        req=fnv1.RunFunctionRequest(
+            context=CONTEXT,
+            desired=fnv1.State(
+                resources={
+                    "resource-a": fnv1.Resource(
+                        resource=resource.dict_to_struct(
+                            {
+                                "apiVersion": "example.crossplane.io/v1alpha1",
+                                "kind": "XTest",
+                                "metadata": {
+                                    "name": "foo",
+                                },
+                                "spec": {},
+                            }
+                        )
+                    ),
+                }
+            ),
+            input=structpb.Struct(
+                fields={
+                    "spec": structpb.Value(
+                        struct_value=structpb.Struct(
+                            fields={
+                                c.INPUT_RESPONSE_TTL: structpb.Value(
+                                    number_value=30,
+                                ),
+                            }
+                        )
+                    )
+                }
+            ),
+        ),
+        want=fnv1.RunFunctionResponse(
+            meta=fnv1.ResponseMeta(ttl=durationpb.Duration(seconds=30)),
+            desired=fnv1.State(
+                resources={
+                    "resource-a": fnv1.Resource(
+                        resource=resource.dict_to_struct(
+                            {
+                                "apiVersion": "example.crossplane.io/v1alpha1",
+                                "kind": "XTest",
+                                "metadata": {
+                                    "name": "foo",
+                                },
+                                "spec": {},
+                            }
+                        )
+                    ),
+                }
+            ),
+            context=CONTEXT,
+        ),
+    ),
+    TestCase(
+        reason="The function should set TTL to 0 when responseTtl is 0 (no caching).",
+        req=fnv1.RunFunctionRequest(
+            context=CONTEXT,
+            desired=fnv1.State(
+                resources={
+                    "resource-a": fnv1.Resource(
+                        resource=resource.dict_to_struct(
+                            {
+                                "apiVersion": "example.crossplane.io/v1alpha1",
+                                "kind": "XTest",
+                                "metadata": {
+                                    "name": "foo",
+                                },
+                                "spec": {},
+                            }
+                        )
+                    ),
+                }
+            ),
+            input=structpb.Struct(
+                fields={
+                    "spec": structpb.Value(
+                        struct_value=structpb.Struct(
+                            fields={
+                                c.INPUT_RESPONSE_TTL: structpb.Value(
+                                    number_value=0,
+                                ),
+                            }
+                        )
+                    )
+                }
+            ),
+        ),
+        want=fnv1.RunFunctionResponse(
+            meta=fnv1.ResponseMeta(ttl=durationpb.Duration(seconds=0)),
+            desired=fnv1.State(
+                resources={
+                    "resource-a": fnv1.Resource(
+                        resource=resource.dict_to_struct(
+                            {
+                                "apiVersion": "example.crossplane.io/v1alpha1",
+                                "kind": "XTest",
+                                "metadata": {
+                                    "name": "foo",
+                                },
+                                "spec": {},
+                            }
+                        )
+                    ),
+                }
+            ),
+            context=CONTEXT,
+        ),
+    ),
 ]
 
 TESTEXCEPTIONS = [

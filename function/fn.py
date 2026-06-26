@@ -383,7 +383,23 @@ class Runner(grpcv1.FunctionRunnerService):
                 default=self.input.get(c.INPUT_RESTRICT_RFC1123_NAME_LENGTH, False),
             )
             max_length = c.MAX_NAME_LENGTH if restrict else c.MAX_PREFIXED_NAME_LENGTH
-            new_metadata_name = self._sanitized_name(new_name, max_length=max_length)
+            full_sanitized_name = self._sanitized_name(
+                new_name, max_length=len(new_name) if new_name else 0
+            )
+            if len(full_sanitized_name) > max_length:
+                crop = self._check_if_true(
+                    annotations,
+                    c.ANNOTATION_CROP_ON_NAME_TOO_LONG,
+                    default=self.input.get(c.INPUT_CROP_ON_NAME_TOO_LONG, False),
+                )
+                if not crop:
+                    msg = (
+                        f"Mutated name '{full_sanitized_name}' for resource {res.ref} "
+                        f"exceeds the maximum length of {max_length} characters "
+                        f"(got {len(full_sanitized_name)})"
+                    )
+                    raise message.EncodeError(msg)
+            new_metadata_name = full_sanitized_name[:max_length].rstrip("-")
             if new_metadata_name != current_name:
                 self.log.debug(f"Mutating name to {new_metadata_name}")
                 res.metadata["name"] = new_metadata_name

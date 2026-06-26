@@ -94,6 +94,13 @@ spec:
                 default: true
                 description: Convert label and tag keys to kebab-case.
                 type: boolean
+              responseTtl:
+                description: >-
+                  Response cache TTL in seconds. Determines how long Crossplane caches
+                  the function response before re-running. Default: 60 (SDK default).
+                  Set to 0 to disable caching (useful for realtime compositions).
+                type: integer
+                minimum: 0
               tags:
                 description: Static tags to add to all resources.
                 type: object

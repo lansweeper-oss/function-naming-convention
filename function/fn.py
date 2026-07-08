@@ -520,11 +520,15 @@ class Runner(grpcv1.FunctionRunnerService):
             await self.mutate_resource(res=res),
         )
 
-    async def read_environment(self, req: fnv1.RunFunctionRequest) -> None:
+    async def read_environment(
+        self, req: fnv1.RunFunctionRequest, rsp: fnv1.RunFunctionResponse
+    ) -> bool:
         """Read Context and the Function input.
 
         This context is shared by all resources of a composition, so we should never alter
         self.environment from resource annotations.
+
+        Returns True if the environment was read successfully, False otherwise.
         """
         self.input = resource.struct_to_dict(req.input).get("spec", {})
         context = self.input.get(c.INPUT_CONTEXT, c.CONTEXT_KEY_ENVIRONMENT)
@@ -538,7 +542,8 @@ class Runner(grpcv1.FunctionRunnerService):
         except (KeyError, ValueError) as exc:
             msg = f"Failed to read context '{context}': {exc!r}"
             self.log.error(msg)
-            raise Exception(msg) from exc
+            response.fatal(rsp, msg)
+            return False
 
         self.environment = resource.struct_to_dict(request_context)
         self.environment.update(self.input.get(c.INPUT_VALUES, {}))
@@ -559,6 +564,7 @@ class Runner(grpcv1.FunctionRunnerService):
             c.INPUT_KEBAB_CASE_LABELS_AND_TAGS,
             default=self.kebab_cased_labels_and_tags,
         )
+        return True
 
     async def replicate_labels(self, res: Resource) -> None:
         """Replicate labels from the resource's metadata to a given resource field."""
@@ -600,9 +606,11 @@ class Runner(grpcv1.FunctionRunnerService):
         else:
             rsp = response.to(req)
         self.log.debug("Invoked function-naming-convention")
-        try:
-            await self.read_environment(req)
 
+        if not await self.read_environment(req, rsp):
+            return rsp
+
+        try:
             # Populate which Environment variables should be mapped to labels
             self.ENV_TO_LABEL = self.input.get(c.INPUT_ENV_TO_LABEL, [])
             async with asyncio.TaskGroup() as tg:

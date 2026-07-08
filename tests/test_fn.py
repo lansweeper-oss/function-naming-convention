@@ -2161,6 +2161,67 @@ TESTCASES = [
             context=CONTEXT,
         ),
     ),
+    TestCase(
+        reason="The function should return SEVERITY_FATAL when the context is missing.",
+        req=fnv1.RunFunctionRequest(
+            context=CONTEXT,
+            desired=fnv1.State(
+                resources={
+                    "resource-a": fnv1.Resource(
+                        resource=resource.dict_to_struct(
+                            {
+                                "apiVersion": "example.crossplane.io/v1alpha1",
+                                "kind": "XTest",
+                                "metadata": {
+                                    "name": "foo",
+                                },
+                                "spec": {},
+                            }
+                        )
+                    ),
+                }
+            ),
+            input=structpb.Struct(
+                fields={
+                    "spec": structpb.Value(
+                        struct_value=structpb.Struct(
+                            fields={
+                                c.INPUT_CONTEXT: structpb.Value(
+                                    string_value="non-existing-context"
+                                ),
+                            }
+                        )
+                    )
+                }
+            ),
+        ),
+        want=fnv1.RunFunctionResponse(
+            meta=fnv1.ResponseMeta(ttl=durationpb.Duration(seconds=60)),
+            desired=fnv1.State(
+                resources={
+                    "resource-a": fnv1.Resource(
+                        resource=resource.dict_to_struct(
+                            {
+                                "apiVersion": "example.crossplane.io/v1alpha1",
+                                "kind": "XTest",
+                                "metadata": {
+                                    "name": "foo",
+                                },
+                                "spec": {},
+                            }
+                        )
+                    ),
+                }
+            ),
+            results=[
+                fnv1.Result(
+                    severity=fnv1.SEVERITY_FATAL,
+                    message="Failed to read context 'non-existing-context': ValueError('Value not set')",
+                ),
+            ],
+            context=CONTEXT,
+        ),
+    ),
 ]
 
 TESTEXCEPTIONS_NAME_TOO_LONG = [
@@ -2451,61 +2512,6 @@ TESTEXCEPTIONS = [
                                         f"{PREFIX}account": "bar",
                                         f"{PREFIX}ls-domain": "core",
                                     },
-                                    "name": "foo",
-                                },
-                                "spec": {},
-                            }
-                        )
-                    ),
-                }
-            ),
-            context=CONTEXT,
-        ),
-    ),
-    TestCase(
-        reason="The function should abort when the context is missing.",
-        req=fnv1.RunFunctionRequest(
-            context=CONTEXT,
-            desired=fnv1.State(
-                resources={
-                    "resource-a": fnv1.Resource(
-                        resource=resource.dict_to_struct(
-                            {
-                                "apiVersion": "example.crossplane.io/v1alpha1",
-                                "kind": "XTest",
-                                "metadata": {
-                                    "name": "foo",
-                                },
-                                "spec": {},
-                            }
-                        )
-                    ),
-                }
-            ),
-            input=structpb.Struct(
-                fields={
-                    "spec": structpb.Value(
-                        struct_value=structpb.Struct(
-                            fields={
-                                c.INPUT_CONTEXT: structpb.Value(
-                                    string_value="non-existing-context"
-                                ),
-                            }
-                        )
-                    )
-                }
-            ),
-        ),
-        want=fnv1.RunFunctionResponse(
-            meta=fnv1.ResponseMeta(ttl=durationpb.Duration(seconds=60)),
-            desired=fnv1.State(
-                resources={
-                    "resource-a": fnv1.Resource(
-                        resource=resource.dict_to_struct(
-                            {
-                                "apiVersion": "example.crossplane.io/v1alpha1",
-                                "kind": "XTest",
-                                "metadata": {
                                     "name": "foo",
                                 },
                                 "spec": {},

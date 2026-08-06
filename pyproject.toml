@@ -45,7 +45,7 @@ validate-bump = false            # Allow going from 0.0.0.dev0+x to 0.0.0.dev0+y
 [tool.hatch.envs.default]
 type = "virtual"
 path = ".venv-default"
-dependencies = ["ipython==9.15.0"]
+dependencies = ["ipython==9.16.1"]
 
 [tool.hatch.envs.default.scripts]
 development = "python function/main.py --insecure --debug"
@@ -54,7 +54,7 @@ development = "python function/main.py --insecure --debug"
 type = "virtual"
 detached = true
 path = ".venv-lint"
-dependencies = ["ruff==0.15.20"]
+dependencies = ["ruff==0.16.1"]
 
 [tool.hatch.envs.lint.scripts]
 check = "ruff check function tests --fix && ruff format --diff function tests"

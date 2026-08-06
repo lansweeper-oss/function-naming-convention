@@ -23,6 +23,7 @@ It can modify:
 - `metadata.labels` - Standard Kubernetes labels
 - `metadata.annotations["crossplane.io/external-name"]` - The external cloud provider name
 - `spec.forProvider.name` - The name field in the provider spec
+- `spec.initProvider.name` - The name field in the init provider spec
 - `spec.forProvider.tags` - Cloud provider tags (AWS, etc.)
 - `spec.forProvider.tags.Name` - The Name tag specifically
 
@@ -55,8 +56,8 @@ Field values for the naming template come from:
 3. Build the name prefix from template fields.
 4. Append the original resource name.
 5. Sanitize to [RFC 1123][] compliance.
-6. Apply to `metadata.name`, `external-name` annotation, `forProvider.name` (or any other field as configured),
-  labels and tags.
+6. Apply to `metadata.name`, `external-name` annotation, `forProvider.name` and/or `initProvider.name`
+  (or any other field as configured), labels and tags.
 
 ## Installation
 
@@ -458,6 +459,85 @@ Without `nameoverride`, the function will apply the naming convention to the exi
 With `nameoverride`, it replaces it entirely. An empty `forProvider.name` is also automatically
 overwritten with the mutated name (same behavior as `nameoverride`).
 
+#### InitProvider Name Field
+
+Write the mutated name to `spec.initProvider.name`:
+
+```yaml
+metadata:
+  annotations:
+    function-naming-convention/init-provider-name: "true"
+```
+
+**Result:**
+
+```yaml
+metadata:
+  name: acme-prod-us1-s3-my-bucket
+spec:
+  initProvider:
+    name: acme-prod-us1-s3-my-bucket
+```
+
+#### Custom InitProvider Name Field
+
+Write to a different field under `spec.initProvider`:
+
+```yaml
+metadata:
+  annotations:
+    function-naming-convention/init-provider-name: "true"
+    function-naming-convention/init-provider-name-field: clusterName
+```
+
+**Result:**
+
+```yaml
+spec:
+  initProvider:
+    clusterName: acme-prod-us1-eks-cluster
+```
+
+Supports dot notation for nested fields, same as `for-provider-name-field`.
+
+#### InitProvider Name Override
+
+Force overwrite existing `spec.initProvider.name` value:
+
+```yaml
+metadata:
+  annotations:
+    function-naming-convention/init-provider-name: "true"
+    function-naming-convention/init-provider-nameoverride: "true"
+```
+
+Without `nameoverride`, the function will apply the naming convention to the existing value.
+With `nameoverride`, it replaces it entirely. An empty `initProvider.name` is also automatically
+overwritten with the mutated name (same behavior as `nameoverride`).
+
+#### Using Both ForProvider and InitProvider
+
+Both can be enabled simultaneously on the same resource:
+
+```yaml
+metadata:
+  annotations:
+    function-naming-convention/for-provider-name: "true"
+    function-naming-convention/for-provider-nameoverride: "true"
+    function-naming-convention/init-provider-name: "true"
+    function-naming-convention/init-provider-nameoverride: "true"
+```
+
+**Result:**
+
+```yaml
+spec:
+  forProvider:
+    name: acme-prod-us1-s3-my-bucket
+  initProvider:
+    name: acme-prod-us1-s3-my-bucket
+```
+
 #### Name Tag
 
 Set the `Name` tag in `spec.forProvider.tags`:
@@ -842,7 +922,7 @@ spec:
 
 ### Dot Notation for Nested Fields
 
-Both `valuesFromMap.from` and `for-provider-name-field` support dot notation:
+Both `valuesFromMap.from`, `for-provider-name-field` and `init-provider-name-field` support dot notation:
 
 ```yaml
 # Map from nested resource field
@@ -1017,6 +1097,9 @@ Tags are applied in this order (later overrides earlier):
 | `for-provider-name` | boolean | Write mutated name to `spec.forProvider.name` |
 | `for-provider-name-field` | string | Custom path for provider name field (dot notation) |
 | `for-provider-nameoverride` | boolean | Overwrite existing `forProvider.name` value |
+| `init-provider-name` | boolean | Write mutated name to `spec.initProvider.name` |
+| `init-provider-name-field` | string | Custom path for init provider name field (dot notation) |
+| `init-provider-nameoverride` | boolean | Overwrite existing `initProvider.name` value |
 | `labels-as-tags` | boolean | Copy labels to `spec.forProvider.tags` |
 | `labels-to-field` | string | Copy labels to custom field (dot notation) |
 | `name-fields-separator` | string | Override name template separator |

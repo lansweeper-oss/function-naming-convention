@@ -1,4 +1,4 @@
-# ruff: noqa: E501
+# ruff: file-ignore[line-too-long]
 import dataclasses
 import unittest
 from unittest import mock
@@ -2219,6 +2219,309 @@ TESTCASES = [
                     message="Failed to read context 'non-existing-context': ValueError('Value not set')",
                 ),
             ],
+            context=CONTEXT,
+        ),
+    ),
+    TestCase(
+        reason="The function should mutate spec.initProvider.name when init-provider-name annotation is set.",
+        req=fnv1.RunFunctionRequest(
+            context=CONTEXT,
+            input=structpb.Struct(
+                fields={
+                    "spec": structpb.Value(
+                        struct_value=structpb.Struct(
+                            fields={
+                                c.INPUT_NAME_TEMPLATE: structpb.Value(
+                                    list_value=structpb.ListValue(
+                                        values=[
+                                            structpb.Value(string_value="region.regionCode"),
+                                            structpb.Value(string_value="ls-domain"),
+                                        ]
+                                    )
+                                ),
+                            }
+                        )
+                    )
+                }
+            ),
+            desired=fnv1.State(
+                resources={
+                    "resource-a": fnv1.Resource(
+                        resource=resource.dict_to_struct(
+                            {
+                                "apiVersion": "example.crossplane.io/v1alpha1",
+                                "kind": "XTest",
+                                "metadata": {
+                                    "name": "foo",
+                                    "annotations": {
+                                        f"{PREFIX}ls-domain": "core",
+                                        f"{c.ANNOTATION_INCLUDE_INITPROVIDER_NAME}": "true",
+                                        f"{c.ANNOTATION_INITPROVIDER_NAMEOVERRIDE}": "true",
+                                    },
+                                },
+                                "spec": {
+                                    "initProvider": {
+                                        "name": "old-value",
+                                    },
+                                },
+                            }
+                        )
+                    ),
+                }
+            ),
+        ),
+        want=fnv1.RunFunctionResponse(
+            meta=fnv1.ResponseMeta(ttl=durationpb.Duration(seconds=60)),
+            desired=fnv1.State(
+                resources={
+                    "resource-a": fnv1.Resource(
+                        resource=resource.dict_to_struct(
+                            {
+                                "apiVersion": "example.crossplane.io/v1alpha1",
+                                "kind": "XTest",
+                                "metadata": {
+                                    "annotations": {},
+                                    "name": "usw2-core-foo",
+                                },
+                                "spec": {
+                                    "initProvider": {
+                                        "name": "usw2-core-foo",
+                                    },
+                                },
+                            }
+                        )
+                    ),
+                }
+            ),
+            context=CONTEXT,
+        ),
+    ),
+    TestCase(
+        reason="The function should mutate both spec.forProvider and spec.initProvider when both annotations are set.",
+        req=fnv1.RunFunctionRequest(
+            context=CONTEXT,
+            input=structpb.Struct(
+                fields={
+                    "spec": structpb.Value(
+                        struct_value=structpb.Struct(
+                            fields={
+                                c.INPUT_NAME_TEMPLATE: structpb.Value(
+                                    list_value=structpb.ListValue(
+                                        values=[
+                                            structpb.Value(string_value="region.regionCode"),
+                                            structpb.Value(string_value="ls-domain"),
+                                        ]
+                                    )
+                                ),
+                            }
+                        )
+                    )
+                }
+            ),
+            desired=fnv1.State(
+                resources={
+                    "resource-a": fnv1.Resource(
+                        resource=resource.dict_to_struct(
+                            {
+                                "apiVersion": "example.crossplane.io/v1alpha1",
+                                "kind": "XTest",
+                                "metadata": {
+                                    "name": "foo",
+                                    "annotations": {
+                                        f"{PREFIX}ls-domain": "core",
+                                        f"{c.ANNOTATION_INCLUDE_FORPROVIDER_NAME}": "true",
+                                        f"{c.ANNOTATION_INCLUDE_INITPROVIDER_NAME}": "true",
+                                        f"{c.ANNOTATION_FORPROVIDER_NAMEOVERRIDE}": "true",
+                                        f"{c.ANNOTATION_INITPROVIDER_NAMEOVERRIDE}": "true",
+                                    },
+                                },
+                                "spec": {
+                                    "forProvider": {
+                                        "name": "old-value",
+                                    },
+                                    "initProvider": {
+                                        "name": "old-value",
+                                    },
+                                },
+                            }
+                        )
+                    ),
+                }
+            ),
+        ),
+        want=fnv1.RunFunctionResponse(
+            meta=fnv1.ResponseMeta(ttl=durationpb.Duration(seconds=60)),
+            desired=fnv1.State(
+                resources={
+                    "resource-a": fnv1.Resource(
+                        resource=resource.dict_to_struct(
+                            {
+                                "apiVersion": "example.crossplane.io/v1alpha1",
+                                "kind": "XTest",
+                                "metadata": {
+                                    "annotations": {},
+                                    "name": "usw2-core-foo",
+                                },
+                                "spec": {
+                                    "forProvider": {
+                                        "name": "usw2-core-foo",
+                                    },
+                                    "initProvider": {
+                                        "name": "usw2-core-foo",
+                                    },
+                                },
+                            }
+                        )
+                    ),
+                }
+            ),
+            context=CONTEXT,
+        ),
+    ),
+    TestCase(
+        reason="The function should not mutate spec.initProvider when init-provider-name annotation is not set.",
+        req=fnv1.RunFunctionRequest(
+            context=CONTEXT,
+            input=structpb.Struct(
+                fields={
+                    "spec": structpb.Value(
+                        struct_value=structpb.Struct(
+                            fields={
+                                c.INPUT_NAME_TEMPLATE: structpb.Value(
+                                    list_value=structpb.ListValue(
+                                        values=[
+                                            structpb.Value(string_value="region.regionCode"),
+                                            structpb.Value(string_value="ls-domain"),
+                                        ]
+                                    )
+                                ),
+                            }
+                        )
+                    )
+                }
+            ),
+            desired=fnv1.State(
+                resources={
+                    "resource-a": fnv1.Resource(
+                        resource=resource.dict_to_struct(
+                            {
+                                "apiVersion": "example.crossplane.io/v1alpha1",
+                                "kind": "XTest",
+                                "metadata": {
+                                    "name": "foo",
+                                    "annotations": {
+                                        f"{PREFIX}ls-domain": "core",
+                                    },
+                                },
+                                "spec": {
+                                    "initProvider": {
+                                        "name": "should-not-change",
+                                    },
+                                },
+                            }
+                        )
+                    ),
+                }
+            ),
+        ),
+        want=fnv1.RunFunctionResponse(
+            meta=fnv1.ResponseMeta(ttl=durationpb.Duration(seconds=60)),
+            desired=fnv1.State(
+                resources={
+                    "resource-a": fnv1.Resource(
+                        resource=resource.dict_to_struct(
+                            {
+                                "apiVersion": "example.crossplane.io/v1alpha1",
+                                "kind": "XTest",
+                                "metadata": {
+                                    "annotations": {},
+                                    "name": "usw2-core-foo",
+                                },
+                                "spec": {
+                                    "initProvider": {
+                                        "name": "should-not-change",
+                                    },
+                                },
+                            }
+                        )
+                    ),
+                }
+            ),
+            context=CONTEXT,
+        ),
+    ),
+    TestCase(
+        reason="The function should use custom field name for spec.initProvider via for-provider-name-field annotation.",
+        req=fnv1.RunFunctionRequest(
+            context=CONTEXT,
+            input=structpb.Struct(
+                fields={
+                    "spec": structpb.Value(
+                        struct_value=structpb.Struct(
+                            fields={
+                                c.INPUT_NAME_TEMPLATE: structpb.Value(
+                                    list_value=structpb.ListValue(
+                                        values=[
+                                            structpb.Value(string_value="region.regionCode"),
+                                            structpb.Value(string_value="ls-domain"),
+                                        ]
+                                    )
+                                ),
+                            }
+                        )
+                    )
+                }
+            ),
+            desired=fnv1.State(
+                resources={
+                    "resource-a": fnv1.Resource(
+                        resource=resource.dict_to_struct(
+                            {
+                                "apiVersion": "example.crossplane.io/v1alpha1",
+                                "kind": "XTest",
+                                "metadata": {
+                                    "name": "foo",
+                                    "annotations": {
+                                        f"{PREFIX}ls-domain": "core",
+                                        f"{c.ANNOTATION_INCLUDE_INITPROVIDER_NAME}": "true",
+                                        f"{c.ANNOTATION_INITPROVIDER_NAMEOVERRIDE}": "true",
+                                        f"{c.ANNOTATION_INITPROVIDER_NAME_FIELD}": "clusterName",
+                                    },
+                                },
+                                "spec": {
+                                    "initProvider": {
+                                        "clusterName": "old-value",
+                                    },
+                                },
+                            }
+                        )
+                    ),
+                }
+            ),
+        ),
+        want=fnv1.RunFunctionResponse(
+            meta=fnv1.ResponseMeta(ttl=durationpb.Duration(seconds=60)),
+            desired=fnv1.State(
+                resources={
+                    "resource-a": fnv1.Resource(
+                        resource=resource.dict_to_struct(
+                            {
+                                "apiVersion": "example.crossplane.io/v1alpha1",
+                                "kind": "XTest",
+                                "metadata": {
+                                    "annotations": {},
+                                    "name": "usw2-core-foo",
+                                },
+                                "spec": {
+                                    "initProvider": {
+                                        "clusterName": "usw2-core-foo",
+                                    },
+                                },
+                            }
+                        )
+                    ),
+                }
+            ),
             context=CONTEXT,
         ),
     ),

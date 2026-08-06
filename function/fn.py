@@ -5,6 +5,7 @@ to have a proper name, labels and (optionally) tags.
 """
 
 import asyncio
+import dataclasses
 import datetime
 from copy import deepcopy
 
@@ -101,6 +102,31 @@ def _to_rfc952_name(
         char if (char.isalnum() or char in valid_chars) else replace_if_not_valid for char in name
     )
     return sanitized.strip(replace_if_not_valid)[:max_length]
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class ProviderSpec:
+    """Configuration for a provider name mutation target."""
+
+    annotation_toggle: str
+    annotation_override: str
+    annotation_name_field: str
+    provider_key: str
+
+
+FORPROVIDER_SPEC = ProviderSpec(
+    annotation_toggle=c.ANNOTATION_INCLUDE_FORPROVIDER_NAME,
+    annotation_override=c.ANNOTATION_FORPROVIDER_NAMEOVERRIDE,
+    annotation_name_field=c.ANNOTATION_FORPROVIDER_NAME_FIELD,
+    provider_key="forProvider",
+)
+
+INITPROVIDER_SPEC = ProviderSpec(
+    annotation_toggle=c.ANNOTATION_INCLUDE_INITPROVIDER_NAME,
+    annotation_override=c.ANNOTATION_INITPROVIDER_NAMEOVERRIDE,
+    annotation_name_field=c.ANNOTATION_INITPROVIDER_NAME_FIELD,
+    provider_key="initProvider",
+)
 
 
 class Resource:
@@ -320,26 +346,31 @@ class Runner(grpcv1.FunctionRunnerService):
             msg = f"Failed to set external-name annotation for {res.ref}: {exc!r}"
             raise message.EncodeError(msg) from exc
 
-    async def mutate_forprovider_name(self, res: Resource, new_name: str) -> None:
-        """Conditionally mutate the spec.forProvider.name for the resource."""
+    async def _mutate_provider_name(
+        self,
+        res: Resource,
+        new_name: str,
+        config: ProviderSpec,
+    ) -> None:
+        """Conditionally mutate the spec.<provider_key>.name for the resource."""
         annotations = res.metadata.get("annotations", {})
-        for_provider_name_field = annotations.get(c.ANNOTATION_FORPROVIDER_NAME_FIELD, "name")
+        name_field = annotations.get(config.annotation_name_field, "name")
         if not (
-            self._check_if_true(annotations, c.ANNOTATION_INCLUDE_FORPROVIDER_NAME)
+            self._check_if_true(annotations, config.annotation_toggle)
             and "spec" in res.resource
-            and "forProvider" in res.resource["spec"]
+            and config.provider_key in res.resource["spec"]
         ):
             return
-        self.log.debug(f"Mutating forProvider.{for_provider_name_field} for {res.ref}")
-        leaf_field = for_provider_name_field.split(".")[-1]
+        self.log.debug(f"Mutating {config.provider_key}.{name_field} for {res.ref}")
+        leaf_field = name_field.split(".")[-1]
         try:
             field_reference = _dot_notation_to_struct_field_create_if_not_existing(
-                res.resource["spec"]["forProvider"],
-                for_provider_name_field,
+                res.resource["spec"][config.provider_key],
+                name_field,
                 constructor="",
             )
             if (
-                self._check_if_true(annotations, c.ANNOTATION_FORPROVIDER_NAMEOVERRIDE)
+                self._check_if_true(annotations, config.annotation_override)
                 or not field_reference[leaf_field]
             ):
                 field_reference[leaf_field] = new_name
@@ -349,8 +380,16 @@ class Runner(grpcv1.FunctionRunnerService):
                     name=field_reference[leaf_field],
                 )
         except Exception as exc:
-            msg = f"Failed to mutate forProvider.{for_provider_name_field} for {res.ref}: {exc!r}"
+            msg = f"Failed to mutate {config.provider_key}.{name_field} for {res.ref}: {exc!r}"
             raise message.EncodeError(msg) from exc
+
+    async def mutate_forprovider_name(self, res: Resource, new_name: str) -> None:
+        """Conditionally mutate the spec.forProvider.name for the resource."""
+        await self._mutate_provider_name(res, new_name, FORPROVIDER_SPEC)
+
+    async def mutate_initprovider_name(self, res: Resource, new_name: str) -> None:
+        """Conditionally mutate the spec.initProvider.name for the resource."""
+        await self._mutate_provider_name(res, new_name, INITPROVIDER_SPEC)
 
     async def mutate_metadata(
         self,
@@ -594,6 +633,7 @@ class Runner(grpcv1.FunctionRunnerService):
             tg.create_task(self.mutate_tags(res, new_name))
             tg.create_task(self.replicate_labels(res))
             tg.create_task(self.mutate_forprovider_name(res, new_name))
+            tg.create_task(self.mutate_initprovider_name(res, new_name))
             tg.create_task(self.mutate_external_name(res, new_name))
 
     async def RunFunction(

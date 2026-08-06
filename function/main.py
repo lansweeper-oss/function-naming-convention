@@ -40,10 +40,10 @@ from function import fn
 )
 # We only expect callers via the CLI.
 def cli(
-    debug: bool,  # noqa: FBT001
+    debug: bool,  # ruff: ignore[boolean-type-hint-positional-argument]
     address: str,
     tls_certs_dir: str,
-    insecure: bool,  # noqa: FBT001
+    insecure: bool,  # ruff: ignore[boolean-type-hint-positional-argument]
     grpc_message_size: int | None,
 ) -> None:
     """A Crossplane composition function."""

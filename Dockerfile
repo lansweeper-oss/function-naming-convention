@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-ARG UV_VERSION=0.11.24
+ARG UV_VERSION=0.12.2
 FROM ghcr.io/astral-sh/uv:${UV_VERSION} AS uv
 
 FROM debian:13-slim AS build

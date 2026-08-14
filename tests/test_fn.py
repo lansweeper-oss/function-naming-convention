@@ -2525,6 +2525,113 @@ TESTCASES = [
             context=CONTEXT,
         ),
     ),
+    TestCase(
+        reason="Tags-to-field: annotation overrides input, creates field path, no spec.forProvider.tags needed.",
+        req=fnv1.RunFunctionRequest(
+            context=CONTEXT,
+            input=structpb.Struct(
+                fields={
+                    "spec": structpb.Value(
+                        struct_value=structpb.Struct(
+                            fields={
+                                c.INPUT_NAME_TEMPLATE: structpb.Value(
+                                    list_value=structpb.ListValue(
+                                        values=[
+                                            structpb.Value(string_value="name-prefix"),
+                                        ]
+                                    )
+                                ),
+                                c.INPUT_TAGS_TO_FIELD: structpb.Value(
+                                    string_value="spec.global.tags",
+                                ),
+                            }
+                        )
+                    )
+                }
+            ),
+            desired=fnv1.State(
+                resources={
+                    "uses-input": fnv1.Resource(
+                        resource=resource.dict_to_struct(
+                            {
+                                "apiVersion": "example.crossplane.io/v1alpha1",
+                                "kind": "XTest",
+                                "metadata": {
+                                    "annotations": {
+                                        f"{c.ANNOTATION_INCLUDE_TAG_NAME_ANNOTATION}": "true",
+                                    },
+                                    "name": "foo",
+                                },
+                                "spec": {},
+                            }
+                        )
+                    ),
+                    "uses-annotation-override": fnv1.Resource(
+                        resource=resource.dict_to_struct(
+                            {
+                                "apiVersion": "example.crossplane.io/v1alpha1",
+                                "kind": "XTest",
+                                "metadata": {
+                                    "annotations": {
+                                        f"{c.ANNOTATION_INCLUDE_TAG_NAME_ANNOTATION}": "true",
+                                        f"{c.ANNOTATION_TAGS_TO_FIELD}": "spec.custom.tags",
+                                    },
+                                    "name": "bar",
+                                },
+                                "spec": {},
+                            }
+                        )
+                    ),
+                }
+            ),
+        ),
+        want=fnv1.RunFunctionResponse(
+            meta=fnv1.ResponseMeta(ttl=durationpb.Duration(seconds=60)),
+            desired=fnv1.State(
+                resources={
+                    "uses-input": fnv1.Resource(
+                        resource=resource.dict_to_struct(
+                            {
+                                "apiVersion": "example.crossplane.io/v1alpha1",
+                                "kind": "XTest",
+                                "metadata": {
+                                    "annotations": {},
+                                    "name": "aa-tst-usw2-foo",
+                                },
+                                "spec": {
+                                    "global": {
+                                        "tags": {
+                                            "Name": "aa-tst-usw2-foo",
+                                        },
+                                    },
+                                },
+                            }
+                        )
+                    ),
+                    "uses-annotation-override": fnv1.Resource(
+                        resource=resource.dict_to_struct(
+                            {
+                                "apiVersion": "example.crossplane.io/v1alpha1",
+                                "kind": "XTest",
+                                "metadata": {
+                                    "annotations": {},
+                                    "name": "aa-tst-usw2-bar",
+                                },
+                                "spec": {
+                                    "custom": {
+                                        "tags": {
+                                            "Name": "aa-tst-usw2-bar",
+                                        },
+                                    },
+                                },
+                            }
+                        )
+                    ),
+                }
+            ),
+            context=CONTEXT,
+        ),
+    ),
 ]
 
 TESTEXCEPTIONS_NAME_TOO_LONG = [

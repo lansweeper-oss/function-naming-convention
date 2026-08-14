@@ -269,6 +269,25 @@ class Runner(grpcv1.FunctionRunnerService):
                 # Update internal environment too
                 res.environment[camelcase(a)] = val
 
+    def _resolve_tags_field(self, res: Resource) -> structpb.Struct | None:
+        """Resolve the target struct for tags, or None if the resource has no tags field."""
+        tags_to_field = self._get_from_annotation_or_input(
+            res, c.ANNOTATION_TAGS_TO_FIELD, c.INPUT_TAGS_TO_FIELD
+        )
+        if tags_to_field:
+            ref = _dot_notation_to_struct_field_create_if_not_existing(
+                res.resource, tags_to_field, {}
+            )
+            leaf_key = tags_to_field.rsplit(".", maxsplit=1)[-1]
+            return ref[leaf_key]
+        if (
+            "spec" in res.resource
+            and "forProvider" in res.resource["spec"]
+            and "tags" in res.resource["spec"]["forProvider"]
+        ):
+            return res.resource["spec"]["forProvider"]["tags"]
+        return None
+
     def get_name(
         self,
         res: Resource,
@@ -494,16 +513,12 @@ class Runner(grpcv1.FunctionRunnerService):
           - Then, we add the (mutated) 'Name' tag if configured to do so.
           - Finally, we copy over labels as tags if configured to do so.
         """
-        if not (
-            "spec" in res.resource
-            and "forProvider" in res.resource["spec"]
-            and "tags" in res.resource["spec"]["forProvider"]
-        ):
+        tags = self._resolve_tags_field(res)
+        if tags is None:
             self.log.debug(f"No tags field found for {res.ref}, skipping tags mutation")
-            return  # Not a resource that supports tags
+            return
         self.log.debug(f"Mutating tags for {res.ref}")
         annotations = res.metadata.get("annotations", {})
-        tags = res.resource["spec"]["forProvider"]["tags"]
         # Set tags from 'tagsField' context key if set
         tags_field = self._get_from_annotation_or_input(
             res, c.ANNOTATION_TAGS_FIELD, c.INPUT_TAGS_FIELD

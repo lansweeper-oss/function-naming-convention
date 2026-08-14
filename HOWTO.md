@@ -212,6 +212,30 @@
       function-naming-convention/labels-to-field: spec.customTags
   ```
 
+- Write tags to a custom field instead of `spec.forProvider.tags` (dot notation):
+  - To globally set for all resources via Input:
+
+    ```yaml
+    [...]
+    input:
+      apiVersion: naming-convention.fn.crossplane.com/v1alpha1
+      kind: Input
+      spec:
+        tagsToField: spec.template.metadata.tags
+    [...]
+    ```
+
+  - To set per resource via annotation (overrides global input):
+
+    ```yaml
+    metadata:
+      annotations:
+        function-naming-convention/tags-to-field: spec.forProvider.manifest.metadata.tags
+    ```
+
+  > The field path is created if it does not exist. When set, tags are written only to the specified
+  field, not to `spec.forProvider.tags`.
+
 - Override a given template field:
 
   - Given this input:

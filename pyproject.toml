@@ -21,7 +21,7 @@ classifiers = [
 dependencies = [
   "case-converter==1.2.0",
   "crossplane-function-sdk-python==0.14.0",
-  "click==8.4.2",
+  "click==8.5.0",
   "PyYAML==6.0.3",
 ]
 

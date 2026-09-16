@@ -47,7 +47,7 @@ endef
 build: $(CROSSPLANE) $(DOCKER) $(HATCH)
 	@$(call PRE_CLI)
 	@$(HATCH) clean
-	@echo "🔨 Building $(name) for arch $(arch)..."
+	@echo "🔨 Building $(name) for architectures: $(arch)..."
 	@for arch in $(arch)
 	@do
 		@suffix=$$(echo $$arch | tr '/' '-')

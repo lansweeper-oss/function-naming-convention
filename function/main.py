@@ -12,6 +12,7 @@ from function import fn
     "--grpc-message-size",
     type=int,
     default=None,
+    envvar="GRPC_MESSAGE_SIZE",
     help="Alias for --max-recv-message-size.",
 )
 def cli(grpc_message_size, **kwargs):

@@ -7,10 +7,11 @@ to have a proper name, labels and (optionally) tags.
 import asyncio
 import dataclasses
 import datetime
+import functools
 from copy import deepcopy
 
+import caseconverter
 import grpc
-from caseconverter import camelcase, kebabcase
 from crossplane.function import logging, resource, response
 from crossplane.function.proto.v1 import run_function_pb2 as fnv1
 from crossplane.function.proto.v1 import run_function_pb2_grpc as grpcv1
@@ -18,6 +19,12 @@ from google.protobuf import message
 from google.protobuf import struct_pb2 as structpb
 
 import function.constants as c
+
+# Case conversion is slow. Its inputs are keys written by composition authors (name template
+# fields, prefixed annotation keys, envToLabel keys), never user-supplied values, so a small
+# bounded cache gets a high hit rate.
+camelcase = functools.lru_cache(maxsize=1024)(caseconverter.camelcase)
+kebabcase = functools.lru_cache(maxsize=1024)(caseconverter.kebabcase)
 
 
 def _dot_notation_to_struct_field(
@@ -143,7 +150,7 @@ class RequestConfig:
     annotation_prefix: str
     label_prefix: str
     kebab_cased_labels_and_tags: bool
-    env_to_label: list
+    env_to_label: tuple[str, ...]
 
 
 class Resource:
@@ -189,7 +196,7 @@ class Runner(grpcv1.FunctionRunnerService):
         separator: str,
     ) -> str:
         """Format the name prefix using the resource environment."""
-        env = deepcopy(environment)
+        env = dict(environment)  # Only top-level keys are added below
         # First check if any of the name_prefix_items keys are in dot notation
         for item in filter(lambda i: "." in i, name_prefix_items):
             result = _get_struct_field_using_dot_notation(env, item)
@@ -637,7 +644,7 @@ class Runner(grpcv1.FunctionRunnerService):
             kebab_cased_labels_and_tags=self._check_if_true(
                 fn_input, c.INPUT_KEBAB_CASE_LABELS_AND_TAGS, default=True
             ),
-            env_to_label=fn_input.get(c.INPUT_ENV_TO_LABEL, []),
+            env_to_label=tuple(fn_input.get(c.INPUT_ENV_TO_LABEL, [])),
         )
 
     async def replicate_labels(self, res: Resource) -> None:
@@ -664,12 +671,12 @@ class Runner(grpcv1.FunctionRunnerService):
             res=res,
             skip_name_modification=skip_name_modification,
         )
-        async with asyncio.TaskGroup() as tg:
-            tg.create_task(self.mutate_tags(res, new_name))
-            tg.create_task(self.replicate_labels(res))
-            tg.create_task(self.mutate_forprovider_name(res, new_name))
-            tg.create_task(self.mutate_initprovider_name(res, new_name))
-            tg.create_task(self.mutate_external_name(res, new_name))
+        # These never wait on I/O, so running them as tasks only adds scheduling overhead.
+        await self.mutate_tags(res, new_name)
+        await self.replicate_labels(res)
+        await self.mutate_forprovider_name(res, new_name)
+        await self.mutate_initprovider_name(res, new_name)
+        await self.mutate_external_name(res, new_name)
 
     async def RunFunction(
         self, req: fnv1.RunFunctionRequest, context: grpc.aio.ServicerContext

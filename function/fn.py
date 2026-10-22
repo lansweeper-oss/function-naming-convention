@@ -154,12 +154,11 @@ class Resource:
         self.config = config
         self.environment = deepcopy(config.environment)
         if "metadata" in res:
-            self.metadata = deepcopy(resource.struct_to_dict(res["metadata"]))
+            self.metadata = resource.struct_to_dict(res["metadata"])
         else:
             self.metadata = {}
         self.ref = name
         self.resource = res
-        self.result = deepcopy(resource.struct_to_dict(res))
 
 
 class Runner(grpcv1.FunctionRunnerService):

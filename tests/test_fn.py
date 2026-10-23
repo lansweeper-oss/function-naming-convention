@@ -1,4 +1,5 @@
 # ruff: file-ignore[line-too-long]
+import asyncio
 import dataclasses
 import unittest
 from unittest import mock
@@ -2975,6 +2976,61 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
                 json_format.MessageToDict(got),
                 msg=f"Failed for test number {i}: '{case.reason}' (-want, +got)",
             )
+
+    @staticmethod
+    def _request(spec: dict) -> fnv1.RunFunctionRequest:
+        return json_format.ParseDict(
+            {
+                "input": {"spec": spec},
+                "context": {
+                    c.CONTEXT_KEY_ENVIRONMENT: {"tenant": "tnt", "region": "usw2", "fooBar": "x"}
+                },
+                "desired": {
+                    "resources": {
+                        "bucket": {
+                            "resource": {
+                                "apiVersion": "s3.aws.upbound.io/v1beta1",
+                                "kind": "Bucket",
+                                "metadata": {"name": "data"},
+                                "spec": {"forProvider": {"tags": {}}},
+                            }
+                        }
+                    }
+                },
+            },
+            fnv1.RunFunctionRequest(),
+        )
+
+    async def test_concurrent_requests_keep_their_own_input(self) -> None:
+        # A single Runner serves every request. Two compositions with different inputs
+        # reconciled at the same time must not see each other's input.
+        runner = fn.Runner()
+        got_a, got_b = await asyncio.gather(
+            runner.RunFunction(
+                self._request({c.INPUT_NAME_TEMPLATE: ["tenant"], c.INPUT_TAGS: {"team": "a"}}),
+                None,
+            ),
+            runner.RunFunction(
+                self._request({c.INPUT_NAME_TEMPLATE: ["region"], c.INPUT_TAGS: {"team": "b"}}),
+                None,
+            ),
+        )
+        for got, name, team in ((got_a, "tnt-data", "a"), (got_b, "usw2-data", "b")):
+            res = resource.struct_to_dict(got.desired.resources["bucket"].resource)
+            self.assertEqual(name, res["metadata"]["name"])
+            self.assertEqual({"team": team}, res["spec"]["forProvider"]["tags"])
+
+    async def test_kebab_case_setting_does_not_leak_between_requests(self) -> None:
+        runner = fn.Runner()
+        await runner.RunFunction(
+            self._request(
+                {c.INPUT_ENV_TO_LABEL: ["fooBar"], c.INPUT_KEBAB_CASE_LABELS_AND_TAGS: False}
+            ),
+            None,
+        )
+        got = await runner.RunFunction(self._request({c.INPUT_ENV_TO_LABEL: ["fooBar"]}), None)
+        res = resource.struct_to_dict(got.desired.resources["bucket"].resource)
+        self.assertEqual({"foo-bar": "x"}, res["metadata"]["labels"])
 
 
 if __name__ == "__main__":

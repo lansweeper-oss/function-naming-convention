@@ -7,10 +7,11 @@ to have a proper name, labels and (optionally) tags.
 import asyncio
 import dataclasses
 import datetime
+import functools
 from copy import deepcopy
 
+import caseconverter
 import grpc
-from caseconverter import camelcase, kebabcase
 from crossplane.function import logging, resource, response
 from crossplane.function.proto.v1 import run_function_pb2 as fnv1
 from crossplane.function.proto.v1 import run_function_pb2_grpc as grpcv1
@@ -18,6 +19,12 @@ from google.protobuf import message
 from google.protobuf import struct_pb2 as structpb
 
 import function.constants as c
+
+# Case conversion is slow. Its inputs are keys written by composition authors (name template
+# fields, prefixed annotation keys, envToLabel keys), never user-supplied values, so a small
+# bounded cache gets a high hit rate.
+camelcase = functools.lru_cache(maxsize=1024)(caseconverter.camelcase)
+kebabcase = functools.lru_cache(maxsize=1024)(caseconverter.kebabcase)
 
 
 def _dot_notation_to_struct_field(
@@ -129,19 +136,36 @@ INITPROVIDER_SPEC = ProviderSpec(
 )
 
 
+@dataclasses.dataclass(frozen=True, slots=True)
+class RequestConfig:
+    """Settings read from a single RunFunctionRequest.
+
+    The SDK serves every request with one Runner instance, and requests run concurrently
+    on the same event loop. Keeping these on the Runner would let a request see the input
+    of another composition reconciled at the same time.
+    """
+
+    input: dict
+    environment: dict
+    annotation_prefix: str
+    label_prefix: str
+    kebab_cased_labels_and_tags: bool
+    env_to_label: tuple[str, ...]
+
+
 class Resource:
     """Resource is a wrapper around a resource with a resource-specific environment."""
 
-    def __init__(self, environment: dict, name: str, res: structpb.Struct):
+    def __init__(self, config: RequestConfig, name: str, res: structpb.Struct):
         """Create a new Resource."""
-        self.environment = deepcopy(environment)
+        self.config = config
+        self.environment = deepcopy(config.environment)
         if "metadata" in res:
-            self.metadata = deepcopy(resource.struct_to_dict(res["metadata"]))
+            self.metadata = resource.struct_to_dict(res["metadata"])
         else:
             self.metadata = {}
         self.ref = name
         self.resource = res
-        self.result = deepcopy(resource.struct_to_dict(res))
 
 
 class Runner(grpcv1.FunctionRunnerService):
@@ -149,10 +173,6 @@ class Runner(grpcv1.FunctionRunnerService):
 
     def __init__(self):
         """Create a new FunctionRunner."""
-        self.annotation_prefix = ""
-        self.input = {}
-        self.label_prefix = ""
-        self.kebab_cased_labels_and_tags = True
         self.log = logging.get_logger()
         self.log.info("Starting function-naming-convention")
 
@@ -176,7 +196,7 @@ class Runner(grpcv1.FunctionRunnerService):
         separator: str,
     ) -> str:
         """Format the name prefix using the resource environment."""
-        env = deepcopy(environment)
+        env = dict(environment)  # Only top-level keys are added below
         # First check if any of the name_prefix_items keys are in dot notation
         for item in filter(lambda i: "." in i, name_prefix_items):
             result = _get_struct_field_using_dot_notation(env, item)
@@ -195,7 +215,8 @@ class Runner(grpcv1.FunctionRunnerService):
             formatted_items.append(env[item])
         return separator.join(formatted_items)
 
-    def _sanitize_label(self, name: str) -> str:
+    @staticmethod
+    def _sanitize_label(name: str, *, kebab_case: bool) -> str:
         """Sanitize a label key to be RFC 1123 compliant.
 
         Valid label keys have two segments: an optional prefix and name, separated by a slash (/).
@@ -216,8 +237,8 @@ class Runner(grpcv1.FunctionRunnerService):
             max_prefix_length = c.MAX_PREFIXED_NAME_LENGTH - 1 - c.MAX_NAME_LENGTH
             prefix = _to_rfc952_name(prefix, max_length=max_prefix_length, valid_chars=("."))
         name = _to_rfc952_name(
-            kebabcase(name) if self.kebab_cased_labels_and_tags else name,
-            valid_chars=("-") if self.kebab_cased_labels_and_tags else ("-", "_", "."),
+            kebabcase(name) if kebab_case else name,
+            valid_chars=("-") if kebab_case else ("-", "_", "."),
         )
         return prefix + "/" + name if prefix else name
 
@@ -238,14 +259,15 @@ class Runner(grpcv1.FunctionRunnerService):
         try:
             metadata = deepcopy(res.metadata)
             for annotation in res.metadata.get("annotations", {}):
-                if annotation.startswith(self.annotation_prefix):
+                if annotation.startswith(res.config.annotation_prefix):
                     metadata["annotations"].pop(annotation)
             res.metadata = metadata
         except Exception as exc:
             self.log.error(f"Failed to cleanup annotations: {exc!r}")
 
+    @staticmethod
     def _get_from_annotation_or_input(
-        self, res: Resource, annotation_field: str, input_field: str, default: str = ""
+        res: Resource, annotation_field: str, input_field: str, default: str = ""
     ) -> str:
         """Get a value from a Resource annotation or input if not present.
 
@@ -259,13 +281,14 @@ class Runner(grpcv1.FunctionRunnerService):
         Otherwise, the global format will be used.
         """
         annotations = res.metadata.get("annotations", {})
-        return annotations.get(annotation_field, self.input.get(input_field, default))
+        return annotations.get(annotation_field, res.config.input.get(input_field, default))
 
-    def _parse_annotations(self, res: Resource) -> None:
+    @staticmethod
+    def _parse_annotations(res: Resource) -> None:
         """Get input from function-specific annotations."""
         for annotation, val in res.metadata.get("annotations", {}).items():
-            if annotation.startswith(self.annotation_prefix):
-                a = annotation[len(self.annotation_prefix) :]
+            if annotation.startswith(res.config.annotation_prefix):
+                a = annotation[len(res.config.annotation_prefix) :]
                 # Update internal environment too
                 res.environment[camelcase(a)] = val
 
@@ -312,7 +335,7 @@ class Runner(grpcv1.FunctionRunnerService):
                 f"falling back to '{c.DEFAULT_NAME_TEMPLATE_SEPARATOR}'"
             )
             name_items_separator = c.DEFAULT_NAME_TEMPLATE_SEPARATOR
-        fallback_name_items = self.input.get(c.INPUT_NAME_TEMPLATE, [])
+        fallback_name_items = res.config.input.get(c.INPUT_NAME_TEMPLATE, [])
         name_prefix_items = annotations.get(c.ANNOTATION_NAME_TEMPLATE, None)
         if name_prefix_items:
             name_prefix_items = name_prefix_items.split(name_items_separator)
@@ -337,7 +360,7 @@ class Runner(grpcv1.FunctionRunnerService):
         # The list of which environment variables are mapped comes from the
         # c.INPUT_ENV_TO_LABEL field in the function input.
         self.log.debug("Mutating labels")
-        for label in self.ENV_TO_LABEL:
+        for label in res.config.env_to_label:
             result = _get_struct_field_using_dot_notation(res.environment, label)
             if not result:
                 self.log.debug(f"'{label}' not found in the context, skipping label mapping")
@@ -345,7 +368,10 @@ class Runner(grpcv1.FunctionRunnerService):
             key, value = result
             self.log.debug(f"Mapping env var '{label}' to label with value '{value}'")
             if value:
-                label_key = self._sanitize_label(f"{self.label_prefix}{key}")
+                label_key = self._sanitize_label(
+                    f"{res.config.label_prefix}{key}",
+                    kebab_case=res.config.kebab_cased_labels_and_tags,
+                )
                 labels[label_key] = _to_rfc952_name(value, valid_chars=("-", "_", "."))
                 function_generated_keys.add(label_key)
         return labels, function_generated_keys
@@ -439,7 +465,7 @@ class Runner(grpcv1.FunctionRunnerService):
             restrict = self._check_if_true(
                 annotations,
                 c.ANNOTATION_RESTRICT_RFC1123_NAME_LENGTH,
-                default=self.input.get(c.INPUT_RESTRICT_RFC1123_NAME_LENGTH, False),
+                default=res.config.input.get(c.INPUT_RESTRICT_RFC1123_NAME_LENGTH, False),
             )
             max_length = c.MAX_NAME_LENGTH if restrict else c.MAX_PREFIXED_NAME_LENGTH
             full_sanitized_name = self._sanitized_name(
@@ -449,7 +475,7 @@ class Runner(grpcv1.FunctionRunnerService):
                 crop = self._check_if_true(
                     annotations,
                     c.ANNOTATION_CROP_ON_NAME_TOO_LONG,
-                    default=self.input.get(c.INPUT_CROP_ON_NAME_TOO_LONG, False),
+                    default=res.config.input.get(c.INPUT_CROP_ON_NAME_TOO_LONG, False),
                 )
                 if not crop:
                     msg = (
@@ -469,7 +495,7 @@ class Runner(grpcv1.FunctionRunnerService):
         res: Resource,
     ) -> structpb.Struct:
         """Mutate the resource to adhere the Naming convention."""
-        for mapped_value in self.input.get(c.INPUT_MAPPED_VALUES, []):
+        for mapped_value in res.config.input.get(c.INPUT_MAPPED_VALUES, []):
             result = _get_struct_field_using_dot_notation(res.resource, mapped_value["from"])
             if not result:
                 self.log.debug(
@@ -530,7 +556,7 @@ class Runner(grpcv1.FunctionRunnerService):
             except ValueError:
                 self.log.warning(f"Failed to set tags from context key {tags_field} for {res.ref}")
         # Inject tags from function input
-        input_tags = self.input.get(c.INPUT_TAGS, {})
+        input_tags = res.config.input.get(c.INPUT_TAGS, {})
         if input_tags:
             self.log.debug(f"Injecting tags from function input for {res.ref}")
             try:
@@ -548,7 +574,7 @@ class Runner(grpcv1.FunctionRunnerService):
         if self._check_if_true(
             annotations,
             c.ANNOTATION_INCLUDE_LABELS_AS_TAGS,
-            default=self.input.get(c.INPUT_LABELS, {}).get(c.INPUT_LABELS_AS_TAGS, False),
+            default=res.config.input.get(c.INPUT_LABELS, {}).get(c.INPUT_LABELS_AS_TAGS, False),
         ):
             labels, function_label_keys = self.get_labels(res=res)
             try:
@@ -576,16 +602,16 @@ class Runner(grpcv1.FunctionRunnerService):
 
     async def read_environment(
         self, req: fnv1.RunFunctionRequest, rsp: fnv1.RunFunctionResponse
-    ) -> bool:
+    ) -> RequestConfig | None:
         """Read Context and the Function input.
 
         This context is shared by all resources of a composition, so we should never alter
-        self.environment from resource annotations.
+        the returned environment from resource annotations.
 
-        Returns True if the environment was read successfully, False otherwise.
+        Returns None if the context could not be read.
         """
-        self.input = resource.struct_to_dict(req.input).get("spec", {})
-        context = self.input.get(c.INPUT_CONTEXT, c.CONTEXT_KEY_ENVIRONMENT)
+        fn_input = resource.struct_to_dict(req.input).get("spec", {})
+        context = fn_input.get(c.INPUT_CONTEXT, c.CONTEXT_KEY_ENVIRONMENT)
         self.log.debug(f"Reading context from key: '{context}'")
         try:
             if context.count("/") > 1:
@@ -597,28 +623,29 @@ class Runner(grpcv1.FunctionRunnerService):
             msg = f"Failed to read context '{context}': {exc!r}"
             self.log.error(msg)
             response.fatal(rsp, msg)
-            return False
+            return None
 
-        self.environment = resource.struct_to_dict(request_context)
-        self.environment.update(self.input.get(c.INPUT_VALUES, {}))
+        environment = resource.struct_to_dict(request_context)
+        environment.update(fn_input.get(c.INPUT_VALUES, {}))
 
-        a_prefix = self.input.get(c.INPUT_ANNOTATIONS, {}).get(c.INPUT_PREFIX, c.ANNOTATION_PREFIX)
-        a_separator = self.input.get(c.INPUT_ANNOTATIONS, {}).get(
+        a_prefix = fn_input.get(c.INPUT_ANNOTATIONS, {}).get(c.INPUT_PREFIX, c.ANNOTATION_PREFIX)
+        a_separator = fn_input.get(c.INPUT_ANNOTATIONS, {}).get(
             c.INPUT_SEPARATOR, c.DEFAULT_PREFIX_SEPARATOR
         )
-        l_prefix = self.input.get(c.INPUT_LABELS, {}).get(c.INPUT_PREFIX, "")
-        l_separator = self.input.get(c.INPUT_LABELS, {}).get(
+        l_prefix = fn_input.get(c.INPUT_LABELS, {}).get(c.INPUT_PREFIX, "")
+        l_separator = fn_input.get(c.INPUT_LABELS, {}).get(
             c.INPUT_SEPARATOR, c.DEFAULT_PREFIX_SEPARATOR
         )
-        self.annotation_prefix = f"{a_prefix}{a_separator}" if a_prefix else ""
-        self.label_prefix = f"{l_prefix}{l_separator}" if l_prefix else ""
-
-        self.kebab_cased_labels_and_tags = self._check_if_true(
-            self.input,
-            c.INPUT_KEBAB_CASE_LABELS_AND_TAGS,
-            default=self.kebab_cased_labels_and_tags,
+        return RequestConfig(
+            input=fn_input,
+            environment=environment,
+            annotation_prefix=f"{a_prefix}{a_separator}" if a_prefix else "",
+            label_prefix=f"{l_prefix}{l_separator}" if l_prefix else "",
+            kebab_cased_labels_and_tags=self._check_if_true(
+                fn_input, c.INPUT_KEBAB_CASE_LABELS_AND_TAGS, default=True
+            ),
+            env_to_label=tuple(fn_input.get(c.INPUT_ENV_TO_LABEL, [])),
         )
-        return True
 
     async def replicate_labels(self, res: Resource) -> None:
         """Replicate labels from the resource's metadata to a given resource field."""
@@ -644,12 +671,12 @@ class Runner(grpcv1.FunctionRunnerService):
             res=res,
             skip_name_modification=skip_name_modification,
         )
-        async with asyncio.TaskGroup() as tg:
-            tg.create_task(self.mutate_tags(res, new_name))
-            tg.create_task(self.replicate_labels(res))
-            tg.create_task(self.mutate_forprovider_name(res, new_name))
-            tg.create_task(self.mutate_initprovider_name(res, new_name))
-            tg.create_task(self.mutate_external_name(res, new_name))
+        # These never wait on I/O, so running them as tasks only adds scheduling overhead.
+        await self.mutate_tags(res, new_name)
+        await self.replicate_labels(res)
+        await self.mutate_forprovider_name(res, new_name)
+        await self.mutate_initprovider_name(res, new_name)
+        await self.mutate_external_name(res, new_name)
 
     async def RunFunction(
         self, req: fnv1.RunFunctionRequest, context: grpc.aio.ServicerContext
@@ -662,12 +689,11 @@ class Runner(grpcv1.FunctionRunnerService):
             rsp = response.to(req)
         self.log.debug("Invoked function-naming-convention")
 
-        if not await self.read_environment(req, rsp):
+        config = await self.read_environment(req, rsp)
+        if config is None:
             return rsp
 
         try:
-            # Populate which Environment variables should be mapped to labels
-            self.ENV_TO_LABEL = self.input.get(c.INPUT_ENV_TO_LABEL, [])
             async with asyncio.TaskGroup() as tg:
                 for name in req.desired.resources:
                     tg.create_task(
@@ -675,7 +701,7 @@ class Runner(grpcv1.FunctionRunnerService):
                             desired=rsp.desired.resources[name],
                             parent=req.observed.composite.resource,
                             res=Resource(
-                                environment=self.environment,
+                                config=config,
                                 name=name,
                                 res=req.desired.resources[name].resource,
                             ),
